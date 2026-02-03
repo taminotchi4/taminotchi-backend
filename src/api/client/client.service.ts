@@ -11,7 +11,7 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { AuthCommonService } from 'src/common/auth/auth-common.service';
 import { Response } from 'express';
-import { ClientSignInDto } from './dto/client-login.dto';
+import { ClientLoginDto } from './dto/client-login.dto';
 
 @Injectable()
 export class ClientService extends BaseService<CreateClientDto, UpdateClientDto, ClientEntity> {
@@ -29,7 +29,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     return rest;
   }
 
-  async clientSignIn(dto: ClientSignInDto, res: Response) {
+  async clientSignIn(dto: ClientLoginDto, res: Response) {
     const { username, password } = dto;
 
     return this.authCommon.signIn({

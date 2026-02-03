@@ -11,7 +11,7 @@ import { MarketEntity } from 'src/core/entity/market.entity';
 import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
 import { Response } from 'express';
-import { MarketSignInDto } from './dto/market-login.dto';
+import { MarketLoginDto } from './dto/market-login.dto';
 
 @Injectable()
 export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto, MarketEntity> {
@@ -29,7 +29,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     return rest;
   }
 
-  async marketSignIn(dto: MarketSignInDto, res: Response) {
+  async marketSignIn(dto: MarketLoginDto, res: Response) {
     const { phoneNumber, password } = dto;
 
     return this.authCommon.signIn({

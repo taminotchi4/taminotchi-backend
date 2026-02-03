@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MarketService } from './market.service';
 import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
-import { MarketSignInDto } from './dto/market-login.dto';
+import { MarketLoginDto } from './dto/market-login.dto';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
@@ -28,9 +28,9 @@ export class MarketController {
   constructor(private readonly marketService: MarketService) { }
 
   @ApiOperation({ summary: 'Market login' })
-  @ApiBody({ type: MarketSignInDto })
+  @ApiBody({ type: MarketLoginDto })
   @Post('login')
-  login(@Body() dto: MarketSignInDto, @Res({ passthrough: true }) res: Response) {
+  login(@Body() dto: MarketLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.marketService.marketSignIn(dto, res);
   }
 

@@ -27,12 +27,12 @@ export class ElonEntity extends BaseEntity {
     status: ElonStatus;
 
     @Index()
-    @Column({ type: 'uuid' })
-    groupId: string;
+    @Column({ type: 'uuid', nullable: true  })
+    groupId: string | null;
 
-    @ManyToOne(() => GroupEntity, (g) => g.elons, { onDelete: 'CASCADE' })
+    @ManyToOne(() => GroupEntity, (g) => g.elons, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'groupId' })
-    group: GroupEntity;
+    group: GroupEntity | null;
 
     @Index()
     @Column({ type: 'uuid', nullable: true })
@@ -51,10 +51,10 @@ export class ElonEntity extends BaseEntity {
     client: ClientEntity;
 
     @Index()
-    @Column({ type: 'uuid', nullable: true, unique: true })
-    commentId: string | null;
+    @Column({ type: 'uuid', unique: true })
+    commentId: string;
 
-    @OneToOne(() => CommentEntity, { nullable: true, onDelete: 'SET NULL' })
+    @OneToOne(() => CommentEntity, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'commentId' })
-    comment: CommentEntity | null;
+    comment: CommentEntity;
 }

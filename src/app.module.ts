@@ -27,6 +27,7 @@ import { AdressModule } from './api/adress/adress.module';
 import { PrivateChatEntity } from './core/entity/private-chat.entity';
 import { MarketModule } from './api/market/market.module';
 import { CommentModule } from './api/comment/comment.module';
+import { ElonModule } from './api/elon/elon.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { CommentModule } from './api/comment/comment.module';
     AdressModule,
     MarketModule,
     CommentModule,
+    ElonModule,
   ],
 })
 export class AppModule { }

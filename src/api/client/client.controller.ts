@@ -8,7 +8,7 @@ import { UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
-import { ClientSignInDto } from './dto/client-login.dto';
+import { ClientLoginDto } from './dto/client-login.dto';
 import type { Response } from 'express';
 
 @ApiTags('Client')
@@ -17,9 +17,9 @@ export class ClientController {
   constructor(private readonly clientService: ClientService) { }
 
   @ApiOperation({ summary: 'Client login' })
-  @ApiBody({ type: ClientSignInDto })
+  @ApiBody({ type: ClientLoginDto })
   @Post('login')
-  login(@Body() dto: ClientSignInDto, @Res({ passthrough: true }) res: Response) {
+  login(@Body() dto: ClientLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.clientService.clientSignIn(dto, res);
   }
 

@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsPhoneNumber, MinLength } from 'class-validator';
 
-export class MarketSignInDto {
+export class MarketLoginDto {
     @ApiProperty({ example: '+998901234567' })
     @IsPhoneNumber('UZ')
     phoneNumber: string;

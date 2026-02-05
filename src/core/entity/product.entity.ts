@@ -30,6 +30,9 @@ export class ProductEntity extends BaseEntity {
     @Column({ type: 'varchar' })
     price: string;
 
+    @Column({ type: 'int', default: 0 })
+    amount: number;
+
     @Column({ type: 'varchar', nullable: true })
     description: string | null;
 

@@ -32,6 +32,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         supCategoryId: dto.supCategoryId,
         marketId: dto.marketId,
         price: dto.price,
+        amount: dto.amount,
         description: dto.description ?? null,
         photoId: dto.photoId ?? null,
         commentId: null,
@@ -62,6 +63,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     if (dto.supCategoryId !== undefined) product.supCategoryId = dto.supCategoryId;
     if (dto.marketId !== undefined) product.marketId = dto.marketId;
     if (dto.price !== undefined) product.price = dto.price;
+    if (dto.amount !== undefined) product.amount = dto.amount;
     if (dto.description !== undefined) product.description = dto.description ?? null;
     if (dto.photoId !== undefined) product.photoId = dto.photoId ?? null;
     if (dto.isActive !== undefined) product.isActive = dto.isActive;

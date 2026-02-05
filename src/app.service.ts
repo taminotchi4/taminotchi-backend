@@ -25,7 +25,7 @@ export class Application {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
     this.setupProxy(app);
-    this.setupCors(app);
+    // this.setupCors(app);
     this.setupGlobalPrefix(app);
     this.setupMiddlewares(app);
     this.setupInterceptors(app);
@@ -44,29 +44,29 @@ export class Application {
     app.set('trust proxy', 1);
   }
 
-  private setupCors(app: NestExpressApplication): void {
-    const origins = (config.CORS_ORIGINS || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+  // private setupCors(app: NestExpressApplication): void {
+  //   const origins = (config.CORS_ORIGINS || '')
+  //     .split(',')
+  //     .map((s) => s.trim())
+  //     .filter(Boolean);
 
-    app.enableCors({
-      origin: (origin, callback) => {
-        // Mobile app / Postman / server-to-server calllarda origin bo‘lmasligi mumkin
-        if (!origin) return callback(null, true);
+  //   app.enableCors({
+  //     origin: (origin, callback) => {
+  //       // Mobile app / Postman / server-to-server calllarda origin bo‘lmasligi mumkin
+  //       if (!origin) return callback(null, true);
 
-        // Agar origins list bo‘sh bo‘lsa, hammasiga ruxsat (dev)
-        if (!origins.length) return callback(null, true);
+  //       // Agar origins list bo‘sh bo‘lsa, hammasiga ruxsat (dev)
+  //       if (!origins.length) return callback(null, true);
 
-        // Whitelist
-        if (origins.includes(origin)) return callback(null, true);
+  //       // Whitelist
+  //       if (origins.includes(origin)) return callback(null, true);
 
-        return callback(new Error('Not allowed by CORS'), false);
-      },
-      credentials: true,
-      methods: this.CORS_METHODS,
-    });
-  }
+  //       return callback(new Error('Not allowed by CORS'), false);
+  //     },
+  //     credentials: true,
+  //     methods: this.CORS_METHODS,
+  //   });
+  // }
 
   private setupGlobalPrefix(app: NestExpressApplication): void {
     app.setGlobalPrefix(this.API_PREFIX);
@@ -138,7 +138,6 @@ export class Application {
           bearerFormat: 'JWT',
           in: 'header',
         },
-        'Bearer',
       )
       .build();
 

@@ -6,6 +6,7 @@ import { PhotoEntity } from './photo.entity';
 import { ClientEntity } from './client.entity';
 import { CommentEntity } from './comment.entity';
 import { ElonStatus } from 'src/common/enum/index.enum';
+import { SupCategoryEntity } from './sup-category.entity';
 
 @Entity('elon')
 export class ElonEntity extends BaseEntity {
@@ -20,6 +21,14 @@ export class ElonEntity extends BaseEntity {
     @JoinColumn({ name: 'categoryId' })
     category: CategoryEntity;
 
+    @Index()
+    @Column({ type: 'uuid' })
+    supCategoryId: string;
+
+    @ManyToOne(() => SupCategoryEntity, (sc) => sc.elons, { onDelete: 'RESTRICT' })
+    @JoinColumn({ name: 'supCategoryId' })
+    supCategory: SupCategoryEntity;
+
     @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
     price: string | null;
 
@@ -27,7 +36,7 @@ export class ElonEntity extends BaseEntity {
     status: ElonStatus;
 
     @Index()
-    @Column({ type: 'uuid', nullable: true  })
+    @Column({ type: 'uuid', nullable: true })
     groupId: string | null;
 
     @ManyToOne(() => GroupEntity, (g) => g.elons, { nullable: true, onDelete: 'SET NULL' })
@@ -51,10 +60,10 @@ export class ElonEntity extends BaseEntity {
     client: ClientEntity;
 
     @Index()
-    @Column({ type: 'uuid', unique: true })
-    commentId: string;
+    @Column({ type: 'uuid', unique: true, nullable: true })
+    commentId: string | null;
 
-    @OneToOne(() => CommentEntity, { onDelete: 'CASCADE' })
+    @OneToOne(() => CommentEntity, { onDelete: 'CASCADE', nullable: true })
     @JoinColumn({ name: 'commentId' })
-    comment: CommentEntity;
+    comment: CommentEntity | null;
 }

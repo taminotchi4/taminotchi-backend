@@ -40,57 +40,57 @@ export class AdminController {
     return this.adminService.adminSignIn(dto, res);
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new admin (SUPER_ADMIN only)' })
   @ApiBody({ type: CreateAdminDto })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Post()
   create(@Body() dto: CreateAdminDto) {
     return this.adminService.createAdmin(dto);
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all admins (ADMIN and SUPER_ADMIN)' })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Get()
   findAll() {
     return this.adminService.findAllAdmins();
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin dashboard statistics (ADMIN and SUPER_ADMIN)' })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Get('stats')
   stats() {
     return this.adminService.getDashboardStats();
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get admin by id (ADMIN and SUPER_ADMIN)' })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.findOneAdmin(id);
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update admin (SUPER_ADMIN only)' })
   @ApiBody({ type: UpdateAdminDto })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAdminDto) {
     return this.adminService.updateAdmin(id, dto);
   }
 
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete admin (SUPER_ADMIN only)' })
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
-  @ApiBearerAuth()
   @Delete(':id')
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.deleteAdmin(id);

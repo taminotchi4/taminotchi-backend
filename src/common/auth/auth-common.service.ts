@@ -46,7 +46,7 @@ export class AuthCommonService {
             extraData,
         } = params;
 
-        const user = await repo.findOne({ where } as any);
+        const user = await repo.findOne({ where });
         if (!user) throw new BadRequestException('Username or password incorrect');
 
         // isActive false bo‘lsa ham shu xabar (security)

@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateAdminDto } from './create-admin.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from 'src/common/enum/index.enum';

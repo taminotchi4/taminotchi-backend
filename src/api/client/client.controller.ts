@@ -3,6 +3,9 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { RequestClientOtpDto } from './dto/request-otp.dto';
+import { VerifyClientOtpDto } from './dto/verify-otp.dto';
+import { RegisterClientDto } from './dto/register-client.dto';
 
 import { UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
@@ -23,12 +26,25 @@ export class ClientController {
     return this.clientService.clientSignIn(dto, res);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
-  @Post()
-  create(@Body() dto: CreateClientDto) {
-    return this.clientService.create(dto);
+  @ApiOperation({ summary: 'Client register - request OTP' })
+  @ApiBody({ type: RequestClientOtpDto })
+  @Post('register/request-otp')
+  requestOtp(@Body() dto: RequestClientOtpDto) {
+    return this.clientService.requestRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Client register - verify OTP' })
+  @ApiBody({ type: VerifyClientOtpDto })
+  @Post('register/verify-otp')
+  verifyOtp(@Body() dto: VerifyClientOtpDto) {
+    return this.clientService.verifyRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Client register - complete profile' })
+  @ApiBody({ type: RegisterClientDto })
+  @Post('register/complete')
+  completeRegister(@Body() dto: RegisterClientDto) {
+    return this.clientService.completeRegister(dto);
   }
 
   @ApiBearerAuth()

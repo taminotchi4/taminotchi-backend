@@ -29,10 +29,12 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const product = prodRepo.create({
         name: dto.name.trim(),
         categoryId: dto.categoryId,
+        supCategoryId: dto.supCategoryId,
         marketId: dto.marketId,
         price: dto.price,
         description: dto.description ?? null,
         photoId: dto.photoId ?? null,
+        commentId: null,
       });
 
       const savedProduct = await prodRepo.save(product);
@@ -57,6 +59,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
 
     if (dto.name !== undefined) product.name = dto.name.trim();
     if (dto.categoryId !== undefined) product.categoryId = dto.categoryId;
+    if (dto.supCategoryId !== undefined) product.supCategoryId = dto.supCategoryId;
     if (dto.marketId !== undefined) product.marketId = dto.marketId;
     if (dto.price !== undefined) product.price = dto.price;
     if (dto.description !== undefined) product.description = dto.description ?? null;

@@ -1,5 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsPhoneNumber, IsString, IsStrongPassword, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+    IsEnum,
+    IsNotEmpty,
+    IsOptional,
+    IsPhoneNumber,
+    IsString,
+    IsStrongPassword,
+    MinLength,
+} from 'class-validator';
+import { LanguageType } from 'src/common/enum/index.enum';
 
 export class CreateClientDto {
     @ApiProperty({ example: 'Ali Valiyev' })
@@ -20,4 +29,9 @@ export class CreateClientDto {
     @IsStrongPassword()
     @MinLength(6)
     password: string;
+
+    @ApiPropertyOptional({ example: LanguageType.UZ, enum: LanguageType })
+    @IsOptional()
+    @IsEnum(LanguageType)
+    language?: LanguageType;
 }

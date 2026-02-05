@@ -16,7 +16,7 @@ import { ProductEntity } from './core/entity/product.entity';
 import { MessageEntity } from './core/entity/message.entity';
 import { CommentEntity } from './core/entity/comment.entity';
 import { AdressEntity } from './core/entity/adress.entity';
-import { LanguageEntity } from './core/entity/language.entity';
+import { SupCategoryEntity } from './core/entity/sup-category.entity';
 import { PhotoEntity } from './core/entity/photo.entity';
 import { OrderEntity } from './core/entity/order.entity';
 import { OrderProductEntity } from './core/entity/order-product.entity';
@@ -28,6 +28,7 @@ import { PrivateChatEntity } from './core/entity/private-chat.entity';
 import { MarketModule } from './api/market/market.module';
 import { CommentModule } from './api/comment/comment.module';
 import { ElonModule } from './api/elon/elon.module';
+import { SupCategoryModule } from './api/sup-category/sup-category.module';
 
 @Module({
   imports: [
@@ -55,7 +56,7 @@ import { ElonModule } from './api/elon/elon.module';
             MessageEntity,
             CommentEntity,
             AdressEntity,
-            LanguageEntity,
+            SupCategoryEntity,
             PhotoEntity,
             OrderEntity,
             OrderProductEntity,
@@ -96,6 +97,7 @@ import { ElonModule } from './api/elon/elon.module';
     MarketModule,
     CommentModule,
     ElonModule,
+    SupCategoryModule,
   ],
 })
 export class AppModule { }

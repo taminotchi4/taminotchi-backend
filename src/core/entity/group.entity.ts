@@ -1,9 +1,9 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Check, Index } from 'typeorm';
 import { BaseEntity } from './base.entity';
-import { CategoryEntity } from './category.entity';
 import { ElonEntity } from './elon.entity';
 import { UserRole } from 'src/common/enum/index.enum';
 import { MarketEntity } from './market.entity';
+import { SupCategoryEntity } from './sup-category.entity';
 
 @Entity('group')
 @Check(`"creatorType" IN ('admin','market')`)
@@ -16,11 +16,11 @@ export class GroupEntity extends BaseEntity {
 
     @Index()
     @Column({ type: 'uuid' })
-    categoryId: string;
+    supCategoryId: string;
 
-    @ManyToOne(() => CategoryEntity, (c) => c.groups, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'categoryId' })
-    category: CategoryEntity;
+    @ManyToOne(() => SupCategoryEntity, (c) => c.groups, { onDelete: 'RESTRICT' })
+    @JoinColumn({ name: 'supCategoryId' })
+    supCategory: SupCategoryEntity;
 
     @Column({ type: 'varchar', nullable: true })
     profilePhoto: string | null;

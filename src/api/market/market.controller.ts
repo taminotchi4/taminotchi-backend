@@ -16,6 +16,9 @@ import { MarketService } from './market.service';
 import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
 import { MarketLoginDto } from './dto/market-login.dto';
+import { RequestMarketOtpDto } from './dto/request-otp.dto';
+import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
+import { RegisterMarketDto } from './dto/register-market.dto';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
@@ -34,12 +37,25 @@ export class MarketController {
     return this.marketService.marketSignIn(dto, res);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
-  @Post()
-  create(@Body() dto: CreateMarketDto) {
-    return this.marketService.create(dto);
+  @ApiOperation({ summary: 'Market register - request OTP' })
+  @ApiBody({ type: RequestMarketOtpDto })
+  @Post('register/request-otp')
+  requestOtp(@Body() dto: RequestMarketOtpDto) {
+    return this.marketService.requestRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Market register - verify OTP' })
+  @ApiBody({ type: VerifyMarketOtpDto })
+  @Post('register/verify-otp')
+  verifyOtp(@Body() dto: VerifyMarketOtpDto) {
+    return this.marketService.verifyRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Market register - complete profile' })
+  @ApiBody({ type: RegisterMarketDto })
+  @Post('register/complete')
+  completeRegister(@Body() dto: RegisterMarketDto) {
+    return this.marketService.completeRegister(dto);
   }
 
   @ApiBearerAuth()

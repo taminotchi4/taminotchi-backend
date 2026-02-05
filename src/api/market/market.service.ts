@@ -1,5 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+import { randomInt, randomUUID } from 'crypto';
+import type { Redis } from 'ioredis';
 import { Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
@@ -12,6 +15,9 @@ import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
 import { Response } from 'express';
 import { MarketLoginDto } from './dto/market-login.dto';
+import { RequestMarketOtpDto } from './dto/request-otp.dto';
+import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
+import { RegisterMarketDto } from './dto/register-market.dto';
 
 @Injectable()
 export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto, MarketEntity> {
@@ -20,9 +26,14 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     protected readonly marketRepo: Repository<MarketEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
+    @InjectRedis() private readonly redis: Redis,
   ) {
     super(marketRepo);
   }
+
+  private readonly OTP_TTL_SEC = 300;
+  private readonly VERIFY_TTL_SEC = 600;
+  private readonly OTP_MAX_ATTEMPTS = 5;
 
   private safe(m: MarketEntity) {
     const { password, ...rest } = m as any;
@@ -49,23 +60,79 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     });
   }
 
-  override async create(dto: CreateMarketDto): Promise<ISuccess<any>> {
-    const name = dto.name.trim();
+  async requestRegisterOtp(dto: RequestMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    if (existsPhone) throw new ConflictException('Phone number already exists');
+
+    const code = String(randomInt(100000, 1000000));
+    const hash = await this.crypto.encrypt(code);
+
+    await this.redis.set(
+      `otp:market:${phoneNumber}`,
+      JSON.stringify({ hash, attempts: 0 }),
+      'EX',
+      this.OTP_TTL_SEC,
+    );
+
+    return successRes({ otpCode: code });
+  }
+
+  async verifyRegisterOtp(dto: VerifyMarketOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const key = `otp:market:${phoneNumber}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new BadRequestException('OTP expired');
+
+    const data = JSON.parse(raw) as { hash: string; attempts: number };
+    if (data.attempts >= this.OTP_MAX_ATTEMPTS) {
+      throw new BadRequestException('OTP attempts exceeded');
+    }
+
+    const ok = await this.crypto.decrypt(dto.code, data.hash);
+    if (!ok) {
+      const ttl = await this.redis.ttl(key);
+      const next = { hash: data.hash, attempts: data.attempts + 1 };
+      if (ttl > 0) {
+        await this.redis.set(key, JSON.stringify(next), 'EX', ttl);
+      } else {
+        await this.redis.set(key, JSON.stringify(next), 'EX', this.OTP_TTL_SEC);
+      }
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.redis.del(key);
+    const verifyToken = randomUUID();
+    await this.redis.set(
+      `otp:market:verified:${phoneNumber}:${verifyToken}`,
+      '1',
+      'EX',
+      this.VERIFY_TTL_SEC,
+    );
+
+    return successRes({ verifyToken });
+  }
+
+  async completeRegister(dto: RegisterMarketDto): Promise<ISuccess<any>> {
+    const phoneNumber = dto.phoneNumber.trim();
+    const verifyKey = `otp:market:verified:${phoneNumber}:${dto.verifyToken}`;
+    const ok = await this.redis.get(verifyKey);
+    if (!ok) throw new BadRequestException('Phone not verified');
 
     const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const entity = this.repo.create({
-      name,
+      name: dto.name.trim(),
       phoneNumber,
       password: await this.crypto.encrypt(dto.password),
       adressId: dto.adressId ?? null,
-      languageId: dto.languageId ?? null,
+      ...(dto.language ? { language: dto.language } : {}),
       photoPath: dto.photoPath ?? null,
     });
 
     const saved = await this.repo.save(entity);
+    await this.redis.del(verifyKey);
     return successRes(this.safe(saved), 201);
   }
 
@@ -89,7 +156,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     if (dto.photoPath !== undefined) market.photoPath = dto.photoPath ?? null;
     if (dto.adressId !== undefined) market.adressId = dto.adressId ?? null;
-    if (dto.languageId !== undefined) market.languageId = dto.languageId ?? null;
+    if (dto.language !== undefined) market.language = dto.language;
     if (dto.isActive !== undefined) market.isActive = dto.isActive;
 
     const saved = await this.repo.save(market);

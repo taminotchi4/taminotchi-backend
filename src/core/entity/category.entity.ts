@@ -3,13 +3,14 @@ import { ProductEntity } from './product.entity';
 import { GroupEntity } from './group.entity';
 import { ElonEntity } from './elon.entity';
 import { BaseEntity } from './base.entity';
+import { SupCategoryEntity } from './sup-category.entity';
 
 @Entity('category')
 export class CategoryEntity extends BaseEntity {
     @Column({ type: 'varchar', unique: true })
     nameUz: string;
 
-    @Column({ type: 'varchar', nullable: true })
+    @Column({ type: 'varchar', nullable: true, unique: true })
     nameRu: string | null;
 
     @Column({ type: 'varchar', nullable: true })
@@ -23,8 +24,8 @@ export class CategoryEntity extends BaseEntity {
     products: ProductEntity[];
 
     // group.categoryId
-    @OneToMany(() => GroupEntity, (g) => g.category)
-    groups: GroupEntity[];
+    @OneToMany(() => SupCategoryEntity, (sc) => sc.category)
+    supCategories: SupCategoryEntity[];
 
     // elon.categoryId
     @OneToMany(() => ElonEntity, (e) => e.category)

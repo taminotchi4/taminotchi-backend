@@ -4,6 +4,7 @@ import { CategoryEntity } from './category.entity';
 import { PhotoEntity } from './photo.entity';
 import { MarketEntity } from './market.entity';
 import { CommentEntity } from './comment.entity';
+import { SupCategoryEntity } from './sup-category.entity';
 
 @Entity('product')
 export class ProductEntity extends BaseEntity {
@@ -17,6 +18,14 @@ export class ProductEntity extends BaseEntity {
     @ManyToOne(() => CategoryEntity, (c) => c.products, { onDelete: 'RESTRICT' })
     @JoinColumn({ name: 'categoryId' })
     category: CategoryEntity;
+
+    @Index()
+    @Column({ type: 'uuid' })
+    supCategoryId: string;
+
+    @ManyToOne(() => SupCategoryEntity, (sc) => sc.products, { onDelete: 'RESTRICT' })
+    @JoinColumn({ name: 'supCategoryId' })
+    supCategory: SupCategoryEntity;
 
     @Column({ type: 'varchar' })
     price: string;

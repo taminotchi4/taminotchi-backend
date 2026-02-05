@@ -28,3 +28,8 @@ export enum MessageStatus {
     DELIVERED = 'delivered', // qabul qiluvchiga yetdi
     SEEN = 'seen',           // o‘qildi
 }
+
+export enum LanguageType {
+    UZ = "uz",
+    RU = "ru",
+}

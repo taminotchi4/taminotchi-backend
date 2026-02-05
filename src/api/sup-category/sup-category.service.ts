@@ -4,23 +4,31 @@ import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { Repository } from 'typeorm';
 
+import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CreateSupCategoryDto } from './dto/create-sup-category.dto';
+import { UpdateSupCategoryDto } from './dto/update-sup-category.dto';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
 
 @Injectable()
-export class CategoryService {
+export class SupCategoryService {
   constructor(
+    @InjectRepository(SupCategoryEntity)
+    private readonly supCategoryRepo: Repository<SupCategoryEntity>,
     @InjectRepository(CategoryEntity)
     private readonly categoryRepo: Repository<CategoryEntity>,
   ) { }
 
   private async ensureUniqueNameUz(nameUz: string, ignoreId?: string) {
-    const exists = await this.categoryRepo.findOne({ where: { nameUz } });
+    const exists = await this.supCategoryRepo.findOne({ where: { nameUz } });
     if (exists && exists.id !== ignoreId) {
-      throw new ConflictException('Category nameUz already exists');
+      throw new ConflictException('SupCategory nameUz already exists');
     }
+  }
+
+  private async ensureCategoryExists(categoryId: string) {
+    const category = await this.categoryRepo.findOne({ where: { id: categoryId } });
+    if (!category) throw new BadRequestException('Category not found');
   }
 
   private toDiskPath(publicPath: string) {
@@ -41,22 +49,26 @@ export class CategoryService {
     );
   }
 
-  async create(dto: CreateCategoryDto, files?: { photoPath?: string | null; iconPath?: string | null })
-    : Promise<ISuccess<CategoryEntity>> {
+  async create(
+    dto: CreateSupCategoryDto,
+    files?: { photoPath?: string | null; iconPath?: string | null },
+  ): Promise<ISuccess<SupCategoryEntity>> {
     const nameUz = dto.nameUz?.trim();
     if (!nameUz) throw new BadRequestException('nameUz is required');
 
     try {
       await this.ensureUniqueNameUz(nameUz);
+      await this.ensureCategoryExists(dto.categoryId);
 
-      const category = this.categoryRepo.create({
+      const supCategory = this.supCategoryRepo.create({
         nameUz,
         nameRu: dto.nameRu ?? null,
+        categoryId: dto.categoryId,
         photoPath: files?.photoPath ?? null,
         iconPath: files?.iconPath ?? null,
       });
 
-      const saved = await this.categoryRepo.save(category);
+      const saved = await this.supCategoryRepo.save(supCategory);
       return successRes(saved, 201);
     } catch (err) {
       await this.cleanupUploadedFiles([files?.photoPath, files?.iconPath]);
@@ -64,19 +76,19 @@ export class CategoryService {
     }
   }
 
-  async findAll(): Promise<ISuccess<CategoryEntity[]>> {
-    const data = await this.categoryRepo.find({
+  async findAll(): Promise<ISuccess<SupCategoryEntity[]>> {
+    const data = await this.supCategoryRepo.find({
       order: { createdAt: 'DESC' } as any,
     });
     return successRes(data);
   }
 
-  async findOne(id: string): Promise<ISuccess<CategoryEntity>> {
-    const data = await this.categoryRepo.findOne({
-      where: { id } as any,
+  async findOne(id: string): Promise<ISuccess<SupCategoryEntity>> {
+    const data = await this.supCategoryRepo.findOne({
+      where: { id },
       relations: {
-        supCategories: true,
         products: true,
+        groups: true,
         elons: true,
       },
     });
@@ -86,31 +98,35 @@ export class CategoryService {
 
   async update(
     id: string,
-    dto: UpdateCategoryDto,
+    dto: UpdateSupCategoryDto,
     files?: { photoPath?: string | null; iconPath?: string | null },
-  ): Promise<ISuccess<CategoryEntity>> {
-    const category = await this.categoryRepo.findOne({ where: { id } });
-    if (!category) throw new NotFoundException('Not found');
+  ): Promise<ISuccess<SupCategoryEntity>> {
+    const supCategory = await this.supCategoryRepo.findOne({ where: { id } });
+    if (!supCategory) throw new NotFoundException('Not found');
 
     try {
       if (dto.nameUz !== undefined) {
         const nameUz = dto.nameUz.trim();
         if (!nameUz) throw new BadRequestException('nameUz cannot be empty');
         await this.ensureUniqueNameUz(nameUz, id);
-        category.nameUz = nameUz;
+        supCategory.nameUz = nameUz;
       }
 
-      if (dto.nameRu !== undefined) category.nameRu = dto.nameRu ?? null;
+      if (dto.nameRu !== undefined) supCategory.nameRu = dto.nameRu ?? null;
 
-      // Fayl kelsa update qilamiz, kelmasa eski qoladi
+      if (dto.categoryId !== undefined) {
+        await this.ensureCategoryExists(dto.categoryId);
+        supCategory.categoryId = dto.categoryId;
+      }
+
       if (files?.photoPath !== undefined && files.photoPath !== null && files.photoPath !== "") {
-        category.photoPath = files.photoPath;
+        supCategory.photoPath = files.photoPath;
       }
       if (files?.iconPath !== undefined && files.iconPath !== null && files.iconPath !== "") {
-        category.iconPath = files.iconPath;
+        supCategory.iconPath = files.iconPath;
       }
 
-      const saved = await this.categoryRepo.save(category);
+      const saved = await this.supCategoryRepo.save(supCategory);
       return successRes(saved);
     } catch (err) {
       await this.cleanupUploadedFiles([files?.photoPath, files?.iconPath]);
@@ -119,10 +135,10 @@ export class CategoryService {
   }
 
   async remove(id: string): Promise<ISuccess<{ deleted: true }>> {
-    const exists = await this.categoryRepo.findOne({ where: { id } });
+    const exists = await this.supCategoryRepo.findOne({ where: { id } });
     if (!exists) throw new NotFoundException('Not found');
 
-    await this.categoryRepo.delete(id);
+    await this.supCategoryRepo.delete(id as any);
     return successRes({ deleted: true });
   }
 }

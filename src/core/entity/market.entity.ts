@@ -2,10 +2,9 @@ import { Column, Entity, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm
 import { BaseEntity } from './base.entity';
 import { AdressEntity } from './adress.entity';
 import { ProductEntity } from './product.entity';
-import { LanguageEntity } from './language.entity';
 import { GroupEntity } from './group.entity';
 import { PrivateChatEntity } from './private-chat.entity';
-import { UserRole } from 'src/common/enum/index.enum';
+import { LanguageType, UserRole } from 'src/common/enum/index.enum';
 
 @Entity('market')
 export class MarketEntity extends BaseEntity {
@@ -13,7 +12,7 @@ export class MarketEntity extends BaseEntity {
     name: string;
 
     @Index()
-    @Column({ type: 'varchar' })
+    @Column({ type: 'varchar', unique: true })
     phoneNumber: string;
 
     @Column({ type: 'varchar' })
@@ -29,12 +28,8 @@ export class MarketEntity extends BaseEntity {
     @JoinColumn({ name: 'adressId' })
     adress: AdressEntity | null;
 
-    @ManyToOne(() => LanguageEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'languageId' })
-    language?: LanguageEntity;
-
-    @Column({ type: 'uuid', nullable: true })
-    languageId?: string | null;
+    @Column({ type: 'enum', enum: LanguageType, default: LanguageType.RU })
+    language: LanguageType;
 
     @Column({ type: 'boolean', default: true })
     isActive: boolean;

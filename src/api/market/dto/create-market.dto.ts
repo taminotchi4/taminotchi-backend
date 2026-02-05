@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+    IsEnum,
     IsNotEmpty,
     IsOptional,
     IsPhoneNumber,
@@ -8,6 +9,7 @@ import {
     MinLength,
     IsStrongPassword,
 } from 'class-validator';
+import { LanguageType } from 'src/common/enum/index.enum';
 
 export class CreateMarketDto {
     @ApiProperty({ example: 'Tech Market' })
@@ -29,10 +31,10 @@ export class CreateMarketDto {
     @IsUUID()
     adressId?: string | null;
 
-    @ApiPropertyOptional({ example: '9f8e7d6c-5b4a-3f2e-1d0c-9b8a7f6e5d4c' })
+    @ApiPropertyOptional({ example: LanguageType.UZ, enum: LanguageType })
     @IsOptional()
-    @IsUUID()
-    languageId?: string | null;
+    @IsEnum(LanguageType)
+    language?: LanguageType;
 
     @ApiPropertyOptional({ example: '/uploads/market/logo.png' })
     @IsOptional()

@@ -122,9 +122,9 @@ export class Application {
 
   private setupSwagger(app: NestExpressApplication): void {
     // prod’da swagger yoqilmasin desang config bilan boshqaramiz
-    if (config.NODE_ENV === 'production') {
-      return;
-    }
+    // if (config.NODE_ENV === 'production') {
+    //   return;
+    // }
 
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Platform API')

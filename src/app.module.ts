@@ -63,7 +63,7 @@ import { SupCategoryModule } from './api/sup-category/sup-category.module';
           ],
           autoLoadEntities: true,
           retryAttempts: 1,
-          synchronize: !isProd, // prod’da false bo‘ladi
+          synchronize: true, // !isProd  prod’da false bo‘ladi
           logging: ['error', 'warn'],
           ssl: isProd
             ? { rejectUnauthorized: false }

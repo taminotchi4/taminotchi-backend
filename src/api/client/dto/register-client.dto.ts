@@ -30,8 +30,8 @@ export class RegisterClientDto {
   @IsNotEmpty()
   username: string;
 
-  @ApiProperty({ example: 'StrongPass123!' })
-  @IsStrongPassword()
+  @ApiProperty({ example: 'Password123' })
+  @IsString()
   @MinLength(6)
   password: string;
 

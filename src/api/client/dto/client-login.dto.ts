@@ -7,6 +7,7 @@ export class ClientLoginDto {
     username: string;
 
     @ApiProperty({ example: 'Client123!' })
+    @IsString()
     @MinLength(6)
     password: string;
 }

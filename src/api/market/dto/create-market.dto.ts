@@ -21,8 +21,8 @@ export class CreateMarketDto {
     @IsPhoneNumber('UZ')
     phoneNumber: string;
 
-    @ApiProperty({ example: 'StrongPass123!' })
-    @IsStrongPassword()
+    @ApiProperty({ example: 'Password123' })
+    @IsString()
     @MinLength(6)
     password: string;
 

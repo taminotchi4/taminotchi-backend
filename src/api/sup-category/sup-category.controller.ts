@@ -73,8 +73,8 @@ export class SupCategoryController {
     const icon = files?.icon?.[0];
 
     return this.supCategoryService.create(dto, {
-      photoPath: photo ? toPublicPath('sup-category', photo.filename) : null,
-      iconPath: icon ? toPublicPath('sup-category', icon.filename) : null,
+      photoUrl: photo ? toPublicPath('sup-category', photo.filename) : null,
+      iconUrl: icon ? toPublicPath('sup-category', icon.filename) : null,
     });
   }
 
@@ -114,8 +114,8 @@ export class SupCategoryController {
     const icon = files?.icon?.[0];
 
     return this.supCategoryService.update(id, dto, {
-      photoPath: photo ? toPublicPath('sup-category', photo.filename) : null,
-      iconPath: icon ? toPublicPath('sup-category', icon.filename) : null,
+      photoUrl: photo ? toPublicPath('sup-category', photo.filename) : null,
+      iconUrl: icon ? toPublicPath('sup-category', icon.filename) : null,
     });
   }
 

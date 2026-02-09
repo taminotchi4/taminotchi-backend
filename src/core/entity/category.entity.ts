@@ -14,10 +14,10 @@ export class CategoryEntity extends BaseEntity {
     nameRu: string | null;
 
     @Column({ type: 'varchar', nullable: true })
-    photoPath: string | null;
+    photoUrl: string | null;
 
     @Column({ type: 'varchar', nullable: true })
-    iconPath: string | null;
+    iconUrl: string | null;
 
     // product.categoryId
     @OneToMany(() => ProductEntity, (p) => p.category)

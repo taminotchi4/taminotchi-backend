@@ -9,6 +9,7 @@ import { CategoryEntity } from 'src/core/entity/category.entity';
 import { CreateSupCategoryDto } from './dto/create-sup-category.dto';
 import { UpdateSupCategoryDto } from './dto/update-sup-category.dto';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
+import { config } from 'src/config';
 
 @Injectable()
 export class SupCategoryService {
@@ -49,9 +50,25 @@ export class SupCategoryService {
     );
   }
 
+  private toAbsoluteUrl(value?: string | null) {
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return value;
+    const base = (config.BACKEND_URL || '').replace(/\/+$/, '');
+    if (!base) return value;
+    return value.startsWith('/') ? `${base}${value}` : `${base}/${value}`;
+  }
+
+  private withUrls(sc: SupCategoryEntity) {
+    return {
+      ...sc,
+      photoUrl: this.toAbsoluteUrl(sc.photoUrl),
+      iconUrl: this.toAbsoluteUrl(sc.iconUrl),
+    };
+  }
+
   async create(
     dto: CreateSupCategoryDto,
-    files?: { photoPath?: string | null; iconPath?: string | null },
+    files?: { photoUrl?: string | null; iconUrl?: string | null },
   ): Promise<ISuccess<SupCategoryEntity>> {
     const nameUz = dto.nameUz?.trim();
     if (!nameUz) throw new BadRequestException('nameUz is required');
@@ -64,14 +81,14 @@ export class SupCategoryService {
         nameUz,
         nameRu: dto.nameRu ?? null,
         categoryId: dto.categoryId,
-        photoPath: files?.photoPath ?? null,
-        iconPath: files?.iconPath ?? null,
+        photoUrl: files?.photoUrl ?? null,
+        iconUrl: files?.iconUrl ?? null,
       });
 
       const saved = await this.supCategoryRepo.save(supCategory);
-      return successRes(saved, 201);
+      return successRes(this.withUrls(saved), 201);
     } catch (err) {
-      await this.cleanupUploadedFiles([files?.photoPath, files?.iconPath]);
+      await this.cleanupUploadedFiles([files?.photoUrl, files?.iconUrl]);
       throw err;
     }
   }
@@ -80,7 +97,7 @@ export class SupCategoryService {
     const data = await this.supCategoryRepo.find({
       order: { createdAt: 'DESC' } as any,
     });
-    return successRes(data);
+    return successRes(data.map((c) => this.withUrls(c)));
   }
 
   async findOne(id: string): Promise<ISuccess<SupCategoryEntity>> {
@@ -93,13 +110,13 @@ export class SupCategoryService {
       },
     });
     if (!data) throw new NotFoundException('Not found');
-    return successRes(data);
+    return successRes(this.withUrls(data));
   }
 
   async update(
     id: string,
     dto: UpdateSupCategoryDto,
-    files?: { photoPath?: string | null; iconPath?: string | null },
+    files?: { photoUrl?: string | null; iconUrl?: string | null },
   ): Promise<ISuccess<SupCategoryEntity>> {
     const supCategory = await this.supCategoryRepo.findOne({ where: { id } });
     if (!supCategory) throw new NotFoundException('Not found');
@@ -119,17 +136,17 @@ export class SupCategoryService {
         supCategory.categoryId = dto.categoryId;
       }
 
-      if (files?.photoPath !== undefined && files.photoPath !== null && files.photoPath !== "") {
-        supCategory.photoPath = files.photoPath;
+      if (files?.photoUrl !== undefined && files.photoUrl !== null && files.photoUrl !== "") {
+        supCategory.photoUrl = files.photoUrl;
       }
-      if (files?.iconPath !== undefined && files.iconPath !== null && files.iconPath !== "") {
-        supCategory.iconPath = files.iconPath;
+      if (files?.iconUrl !== undefined && files.iconUrl !== null && files.iconUrl !== "") {
+        supCategory.iconUrl = files.iconUrl;
       }
 
       const saved = await this.supCategoryRepo.save(supCategory);
-      return successRes(saved);
+      return successRes(this.withUrls(saved));
     } catch (err) {
-      await this.cleanupUploadedFiles([files?.photoPath, files?.iconPath]);
+      await this.cleanupUploadedFiles([files?.photoUrl, files?.iconUrl]);
       throw err;
     }
   }

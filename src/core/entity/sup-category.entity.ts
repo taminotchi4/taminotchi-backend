@@ -21,10 +21,10 @@ export class SupCategoryEntity extends BaseEntity {
     category: CategoryEntity;
 
     @Column({ type: 'varchar', nullable: true })
-    photoPath: string | null;
+    photoUrl: string | null;
 
     @Column({ type: 'varchar', nullable: true })
-    iconPath: string | null;
+    iconUrl: string | null;
 
     // product.supCategoryId
     @OneToMany(() => ProductEntity, (p) => p.supCategory)

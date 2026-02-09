@@ -75,8 +75,8 @@ export class CategoryController {
     const icon = files?.icon?.[0];
 
     return this.categoryService.create(dto, {
-      photoPath: photo ? toPublicPath('category', photo.filename) : null,
-      iconPath: icon ? toPublicPath('category', icon.filename) : null,
+      photoUrl: photo ? toPublicPath('category', photo.filename) : null,
+      iconUrl: icon ? toPublicPath('category', icon.filename) : null,
     });
   }
 
@@ -115,8 +115,8 @@ export class CategoryController {
     const icon = files?.icon?.[0];
 
     return this.categoryService.update(id, dto, {
-      photoPath: photo ? toPublicPath('category', photo.filename) : null,
-      iconPath: icon ? toPublicPath('category', icon.filename) : null,
+      photoUrl: photo ? toPublicPath('category', photo.filename) : null,
+      iconUrl: icon ? toPublicPath('category', icon.filename) : null,
     });
   }
 

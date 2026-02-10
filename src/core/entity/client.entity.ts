@@ -22,7 +22,7 @@ export class ClientEntity extends BaseEntity {
     @Column({ type: 'varchar', nullable: true })
     photoPath: string | null;
 
-    @Column({ type: 'enum', enum: LanguageType, default: LanguageType.RU })
+    @Column({ type: 'enum', enum: LanguageType, default: LanguageType.UZ })
     language: LanguageType;
 
     @Column({ type: 'enum', enum: UserRole, default: UserRole.CLIENT })

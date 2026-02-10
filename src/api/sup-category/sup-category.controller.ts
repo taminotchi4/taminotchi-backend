@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -28,13 +29,13 @@ export class SupCategoryController {
   constructor(private readonly supCategoryService: SupCategoryService) { }
 
   @Get()
-  findAll() {
-    return this.supCategoryService.findAll();
+  findAll(@Req() req: any) {
+    return this.supCategoryService.findAll(req?.lang);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.supCategoryService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.supCategoryService.findOne(id, req?.lang);
   }
 
   @ApiBearerAuth()

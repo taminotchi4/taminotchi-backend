@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -31,13 +32,13 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
   @Get()
-  findAll() {
-    return this.categoryService.findAll();
+  findAll(@Req() req: any) {
+    return this.categoryService.findAll(req?.lang);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.categoryService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.categoryService.findOne(id, req?.lang);
   }
 
   @ApiBearerAuth()

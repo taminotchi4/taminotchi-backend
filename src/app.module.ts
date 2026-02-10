@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -29,6 +29,7 @@ import { MarketModule } from './api/market/market.module';
 import { CommentModule } from './api/comment/comment.module';
 import { ElonModule } from './api/elon/elon.module';
 import { SupCategoryModule } from './api/sup-category/sup-category.module';
+import { LanguageMiddleware } from './common/middleware/language.middleware';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { SupCategoryModule } from './api/sup-category/sup-category.module';
         };
       },
     }),
+    TypeOrmModule.forFeature([ClientEntity, MarketEntity]),
 
     JwtModule.register({
       global: true,
@@ -99,5 +101,10 @@ import { SupCategoryModule } from './api/sup-category/sup-category.module';
     ElonModule,
     SupCategoryModule,
   ],
+  providers: [LanguageMiddleware],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LanguageMiddleware).forRoutes('*');
+  }
+}

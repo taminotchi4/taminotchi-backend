@@ -14,6 +14,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './infrastructure/exception/All-exception-filter';
 import { config } from './config/index';
 import { join } from 'path';
+import { SuccessMessageInterceptor } from './common/interceptor/success-message.interceptor';
 
 @Injectable()
 export class Application {
@@ -83,6 +84,7 @@ export class Application {
   private setupInterceptors(app: NestExpressApplication): void {
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
+      new SuccessMessageInterceptor(),
     );
   }
 

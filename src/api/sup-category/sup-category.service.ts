@@ -6,6 +6,9 @@ import { Repository } from 'typeorm';
 
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
+import { ProductEntity } from 'src/core/entity/product.entity';
+import { GroupEntity } from 'src/core/entity/group.entity';
+import { ElonEntity } from 'src/core/entity/elon.entity';
 import { CreateSupCategoryDto } from './dto/create-sup-category.dto';
 import { UpdateSupCategoryDto } from './dto/update-sup-category.dto';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -18,6 +21,12 @@ export class SupCategoryService {
     private readonly supCategoryRepo: Repository<SupCategoryEntity>,
     @InjectRepository(CategoryEntity)
     private readonly categoryRepo: Repository<CategoryEntity>,
+    @InjectRepository(ProductEntity)
+    private readonly productRepo: Repository<ProductEntity>,
+    @InjectRepository(GroupEntity)
+    private readonly groupRepo: Repository<GroupEntity>,
+    @InjectRepository(ElonEntity)
+    private readonly elonRepo: Repository<ElonEntity>,
   ) { }
 
   private async ensureUniqueNameUz(nameUz: string, ignoreId?: string) {
@@ -66,6 +75,14 @@ export class SupCategoryService {
     };
   }
 
+  private withName<T extends { nameUz: string; nameRu: string | null }>(
+    item: T,
+    lang?: 'uz' | 'ru',
+  ) {
+    const name = lang === 'ru' ? (item.nameRu || item.nameUz) : item.nameUz;
+    return { ...item, name };
+  }
+
   async create(
     dto: CreateSupCategoryDto,
     files?: { photoUrl?: string | null; iconUrl?: string | null },
@@ -93,14 +110,14 @@ export class SupCategoryService {
     }
   }
 
-  async findAll(): Promise<ISuccess<SupCategoryEntity[]>> {
+  async findAll(lang?: 'uz' | 'ru'): Promise<ISuccess<any[]>> {
     const data = await this.supCategoryRepo.find({
       order: { createdAt: 'DESC' } as any,
     });
-    return successRes(data.map((c) => this.withUrls(c)));
+    return successRes(data.map((c) => this.withName(this.withUrls(c) as any, lang)));
   }
 
-  async findOne(id: string): Promise<ISuccess<SupCategoryEntity>> {
+  async findOne(id: string, lang?: 'uz' | 'ru'): Promise<ISuccess<any>> {
     const data = await this.supCategoryRepo.findOne({
       where: { id },
       relations: {
@@ -110,7 +127,7 @@ export class SupCategoryService {
       },
     });
     if (!data) throw new NotFoundException('Not found');
-    return successRes(this.withUrls(data));
+    return successRes(this.withName(this.withUrls(data) as any, lang));
   }
 
   async update(
@@ -154,6 +171,18 @@ export class SupCategoryService {
   async remove(id: string): Promise<ISuccess<{ deleted: true }>> {
     const exists = await this.supCategoryRepo.findOne({ where: { id } });
     if (!exists) throw new NotFoundException('Not found');
+
+    const [productCount, groupCount, elonCount] = await Promise.all([
+      this.productRepo.count({ where: { supCategoryId: id } as any }),
+      this.groupRepo.count({ where: { supCategoryId: id } as any }),
+      this.elonRepo.count({ where: { supCategoryId: id } as any }),
+    ]);
+
+    if (productCount > 0 || groupCount > 0 || elonCount > 0) {
+      throw new ConflictException(
+        'SupCategory has related records (products/groups/elons)',
+      );
+    }
 
     await this.supCategoryRepo.delete(id as any);
     return successRes({ deleted: true });

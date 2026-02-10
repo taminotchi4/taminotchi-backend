@@ -5,7 +5,7 @@ export type LangMessage = {
 
 export interface ISuccess<T = any> {
   statusCode: number;
-  message: LangMessage;
+  message: string | LangMessage;
   data: T;
   meta?: any; // pagination yoki boshqa qo‘shimcha info
 }

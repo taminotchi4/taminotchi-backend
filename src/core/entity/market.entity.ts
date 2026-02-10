@@ -28,7 +28,7 @@ export class MarketEntity extends BaseEntity {
     @JoinColumn({ name: 'adressId' })
     adress: AdressEntity | null;
 
-    @Column({ type: 'enum', enum: LanguageType, default: LanguageType.RU })
+    @Column({ type: 'enum', enum: LanguageType, default: LanguageType.UZ })
     language: LanguageType;
 
     @Column({ type: 'boolean', default: true })

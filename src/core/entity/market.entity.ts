@@ -8,8 +8,8 @@ import { LanguageType, UserRole } from 'src/common/enum/index.enum';
 
 @Entity('market')
 export class MarketEntity extends BaseEntity {
-    @Column({ type: 'varchar' })
-    name: string;
+    @Column({ type: 'varchar', nullable: true })
+    name: string | null;
 
     @Index()
     @Column({ type: 'varchar', unique: true })

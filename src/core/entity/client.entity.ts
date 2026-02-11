@@ -7,11 +7,11 @@ import { PrivateChatEntity } from './private-chat.entity';
 
 @Entity('client')
 export class ClientEntity extends BaseEntity {
-    @Column({ type: 'varchar' })
-    fullName: string;
+    @Column({ type: 'varchar', nullable: true })
+    fullName: string | null;
 
-    @Column({ type: 'varchar', unique: true })
-    username: string;
+    @Column({ type: 'varchar', unique: true, nullable: true })
+    username: string | null;
 
     @Column({ type: 'varchar' })
     password: string;

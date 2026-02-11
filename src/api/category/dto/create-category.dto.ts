@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Allow, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class CreateCategoryDto {
@@ -13,4 +13,11 @@ export class CreateCategoryDto {
     @IsString()
     @MaxLength(100)
     nameRu?: string | null;
+
+    // multipart file fields (to satisfy whitelist validation)
+    @Allow()
+    photo?: any;
+
+    @Allow()
+    icon?: any;
 }

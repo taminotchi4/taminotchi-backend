@@ -41,11 +41,11 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
   }
 
   async clientSignIn(dto: ClientLoginDto, res: Response) {
-    const { username, password } = dto;
+    const { phoneNumber, password } = dto;
 
     return this.authCommon.signIn({
       repo: this.clientRepo,
-      where: [{ username: username }],
+      where: [{ phoneNumber }],
       password,
       res,
       safeUser: (c) => ({

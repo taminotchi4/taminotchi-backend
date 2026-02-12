@@ -16,13 +16,10 @@ export class CreateElonDto {
     @IsUUID()
     categoryId: string;
 
-    @ApiProperty({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
+    @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
+    @IsOptional()
     @IsUUID()
-    supCategoryId: string;
-
-    @ApiProperty({ example: 'a1b2c3d4-5555-6666-7777-88889999aaaa' })
-    @IsUUID()
-    clientId: string;
+    supCategoryId?: string | null;
 
     @ApiPropertyOptional({ example: '999.99' })
     @IsOptional()

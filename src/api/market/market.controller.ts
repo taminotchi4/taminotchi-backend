@@ -19,6 +19,7 @@ import { MarketLoginDto } from './dto/market-login.dto';
 import { RequestMarketOtpDto } from './dto/request-otp.dto';
 import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
+import { CheckMarketPhoneDto } from './dto/check-phone.dto';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
@@ -42,6 +43,13 @@ export class MarketController {
   @Post('register/request-otp')
   requestOtp(@Body() dto: RequestMarketOtpDto) {
     return this.marketService.requestRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Check market phone exists' })
+  @ApiBody({ type: CheckMarketPhoneDto })
+  @Post('check-phone')
+  checkPhone(@Body() dto: CheckMarketPhoneDto) {
+    return this.marketService.checkPhone(dto.phoneNumber);
   }
 
   @ApiOperation({ summary: 'Market register - verify OTP' })

@@ -20,12 +20,12 @@ export class ProductEntity extends BaseEntity {
     category: CategoryEntity;
 
     @Index()
-    @Column({ type: 'uuid' })
-    supCategoryId: string;
+    @Column({ type: 'uuid', nullable: true })
+    supCategoryId: string | null;
 
-    @ManyToOne(() => SupCategoryEntity, (sc) => sc.products, { onDelete: 'RESTRICT' })
+    @ManyToOne(() => SupCategoryEntity, (sc) => sc.products, {nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'supCategoryId' })
-    supCategory: SupCategoryEntity;
+    supCategory: SupCategoryEntity | null;
 
     @Column({ type: 'varchar' })
     price: string;

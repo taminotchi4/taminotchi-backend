@@ -7,7 +7,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ElonService } from './elon.service';
@@ -25,10 +27,13 @@ export class ElonController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @AccessRoles(UserRole.CLIENT)
   @Post()
-  create(@Body() createElonDto: CreateElonDto) {
-    return this.elonService.create(createElonDto);
+  create(@Body() createElonDto: CreateElonDto, @Req() req: any) {
+    if (req?.user?.role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only client can create elon');
+    }
+    return this.elonService.createForClient(createElonDto, req.user.id);
   }
 
   @Get()

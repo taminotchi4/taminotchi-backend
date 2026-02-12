@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { randomInt, randomUUID } from 'crypto';
+import { randomInt } from 'crypto';
 import type { Redis } from 'ioredis';
 import { Repository } from 'typeorm';
 
@@ -78,6 +78,12 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     return successRes({ otpCode: code });
   }
 
+  async checkPhone(phoneNumber: string) {
+    const phone = phoneNumber.trim();
+    const exists = await this.repo.findOne({ where: { phoneNumber: phone } as any });
+    return successRes({ exists: Boolean(exists) });
+  }
+
   async verifyRegisterOtp(dto: VerifyMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
     const key = `otp:market:${phoneNumber}`;
@@ -102,20 +108,19 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     }
 
     await this.redis.del(key);
-    const verifyToken = randomUUID();
     await this.redis.set(
-      `otp:market:verified:${phoneNumber}:${verifyToken}`,
+      `otp:market:verified:${phoneNumber}`,
       '1',
       'EX',
       this.VERIFY_TTL_SEC,
     );
 
-    return successRes({ verifyToken });
+    return successRes({ verified: true });
   }
 
   async completeRegister(dto: RegisterMarketDto): Promise<ISuccess<any>> {
     const phoneNumber = dto.phoneNumber.trim();
-    const verifyKey = `otp:market:verified:${phoneNumber}:${dto.verifyToken}`;
+    const verifyKey = `otp:market:verified:${phoneNumber}`;
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
@@ -123,7 +128,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const entity = this.repo.create({
-      name: dto.name.trim(),
+      ...(dto.name ? { name: dto.name.trim() } : {}),
       phoneNumber,
       password: await this.crypto.encrypt(dto.password),
       adressId: dto.adressId ?? null,

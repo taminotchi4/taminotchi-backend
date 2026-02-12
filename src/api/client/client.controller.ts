@@ -6,6 +6,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { CheckClientPhoneDto } from './dto/check-phone.dto';
 
 import { UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
@@ -31,6 +32,13 @@ export class ClientController {
   @Post('register/request-otp')
   requestOtp(@Body() dto: RequestClientOtpDto) {
     return this.clientService.requestRegisterOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Check client phone exists' })
+  @ApiBody({ type: CheckClientPhoneDto })
+  @Post('check-phone')
+  checkPhone(@Body() dto: CheckClientPhoneDto) {
+    return this.clientService.checkPhone(dto.phoneNumber);
   }
 
   @ApiOperation({ summary: 'Client register - verify OTP' })

@@ -15,12 +15,12 @@ export class GroupEntity extends BaseEntity {
     description: string | null;
 
     @Index()
-    @Column({ type: 'uuid' })
-    supCategoryId: string;
+    @Column({ type: 'uuid', nullable: true })
+    supCategoryId: string | null;
 
-    @ManyToOne(() => SupCategoryEntity, (c) => c.groups, { onDelete: 'RESTRICT' })
+    @ManyToOne(() => SupCategoryEntity, (c) => c.groups, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'supCategoryId' })
-    supCategory: SupCategoryEntity;
+    supCategory: SupCategoryEntity | null;
 
     @Column({ type: 'varchar', nullable: true })
     profilePhoto: string | null;

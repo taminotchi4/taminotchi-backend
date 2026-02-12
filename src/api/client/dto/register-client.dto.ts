@@ -1,11 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
-  IsNotEmpty,
   IsOptional,
   IsPhoneNumber,
   IsString,
-  IsStrongPassword,
   MinLength,
 } from 'class-validator';
 import { LanguageType } from 'src/common/enum/index.enum';
@@ -15,20 +13,15 @@ export class RegisterClientDto {
   @IsPhoneNumber('UZ')
   phoneNumber: string;
 
-  @ApiProperty({ example: 'verify-token-from-otp' })
+  @ApiPropertyOptional({ example: 'Ali Valiyev' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  verifyToken: string;
+  fullName?: string;
 
-  @ApiProperty({ example: 'Ali Valiyev' })
+  @ApiPropertyOptional({ example: 'ali' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fullName: string;
-
-  @ApiProperty({ example: 'ali' })
-  @IsString()
-  @IsNotEmpty()
-  username: string;
+  username?: string;
 
   @ApiProperty({ example: 'Password123' })
   @IsString()

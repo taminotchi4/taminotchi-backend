@@ -20,7 +20,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     super(elonRepo);
   }
 
-  override async create(dto: CreateElonDto): Promise<ISuccess<ElonEntity>> {
+  async createForClient(dto: CreateElonDto, clientId: string): Promise<ISuccess<ElonEntity>> {
     return this.elonRepo.manager.transaction(async (manager) => {
       const eRepo = manager.getRepository(ElonEntity);
       const cRepo = manager.getRepository(CommentEntity);
@@ -28,8 +28,8 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       const elon = eRepo.create({
         text: dto.text.trim(),
         categoryId: dto.categoryId,
-        supCategoryId: dto.supCategoryId,
-        clientId: dto.clientId,
+        ...(dto.supCategoryId ? { supCategoryId: dto.supCategoryId } : {}),
+        clientId,
         price: dto.price ?? null,
         groupId: dto.groupId ?? null,
         photoId: dto.photoId ?? null,
@@ -59,7 +59,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (dto.text !== undefined) elon.text = dto.text.trim();
     if (dto.categoryId !== undefined) elon.categoryId = dto.categoryId;
     if (dto.supCategoryId !== undefined) elon.supCategoryId = dto.supCategoryId;
-    if (dto.clientId !== undefined) elon.clientId = dto.clientId;
     if (dto.price !== undefined) elon.price = dto.price ?? null;
     if (dto.groupId !== undefined) elon.groupId = dto.groupId ?? null;
     if (dto.photoId !== undefined) elon.photoId = dto.photoId ?? null;

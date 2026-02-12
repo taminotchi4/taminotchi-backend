@@ -13,7 +13,7 @@ export class TokenService {
       { id: payload.id, role: payload.role, isActive: payload?.isActive, type: 'access' },
       {
         secret: config.TOKEN.ACCESS_TOKEN_KEY,
-        expiresIn: `${config.TOKEN.ACCESS_TOKEN_TIME}m`, // minutes
+        expiresIn: `${config.TOKEN.ACCESS_TOKEN_TIME}d`,
       },
     );
   }
@@ -23,7 +23,7 @@ export class TokenService {
       { id: payload.id, role: payload.role, isActive: payload?.isActive, type: 'refresh' },
       {
         secret: config.TOKEN.REFRESH_TOKEN_KEY,
-        expiresIn: `${config.TOKEN.REFRESH_TOKEN_TIME}d`, // days
+        expiresIn: `${config.TOKEN.REFRESH_TOKEN_TIME}d`,
       },
     );
   }

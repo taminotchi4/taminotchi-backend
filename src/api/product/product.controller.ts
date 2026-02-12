@@ -7,7 +7,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProductService } from './product.service';
@@ -25,10 +27,13 @@ export class ProductController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET)
+  @AccessRoles(UserRole.MARKET)
   @Post()
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productService.create(createProductDto);
+  create(@Body() createProductDto: CreateProductDto, @Req() req: any) {
+    if (req?.user?.role !== UserRole.MARKET) {
+      throw new ForbiddenException('Only market can create product');
+    }
+    return this.productService.createForMarket(createProductDto, req.user.id);
   }
 
   @Get()

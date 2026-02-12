@@ -21,7 +21,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     super(productRepo);
   }
 
-  override async create(dto: CreateProductDto): Promise<ISuccess<ProductEntity>> {
+  async createForMarket(dto: CreateProductDto, marketId: string): Promise<ISuccess<ProductEntity>> {
     return this.productRepo.manager.transaction(async (manager) => {
       const prodRepo = manager.getRepository(ProductEntity);
       const commRepo = manager.getRepository(CommentEntity);
@@ -29,8 +29,8 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const product = prodRepo.create({
         name: dto.name.trim(),
         categoryId: dto.categoryId,
-        supCategoryId: dto.supCategoryId,
-        marketId: dto.marketId,
+        supCategoryId: dto.supCategoryId ?? null,
+        marketId,
         price: dto.price,
         amount: dto.amount,
         description: dto.description ?? null,
@@ -61,7 +61,6 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     if (dto.name !== undefined) product.name = dto.name.trim();
     if (dto.categoryId !== undefined) product.categoryId = dto.categoryId;
     if (dto.supCategoryId !== undefined) product.supCategoryId = dto.supCategoryId;
-    if (dto.marketId !== undefined) product.marketId = dto.marketId;
     if (dto.price !== undefined) product.price = dto.price;
     if (dto.amount !== undefined) product.amount = dto.amount;
     if (dto.description !== undefined) product.description = dto.description ?? null;

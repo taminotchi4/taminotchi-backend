@@ -18,13 +18,10 @@ export class CreateProductDto {
     @IsUUID()
     categoryId: string;
 
-    @ApiProperty({ example: 'a1b2c3d4-5555-6666-7777-88889999aaaa' })
+    @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
+    @IsOptional()
     @IsUUID()
-    marketId: string;
-
-    @ApiProperty({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
-    @IsUUID()
-    supCategoryId: string;
+    supCategoryId?: string | null;
 
     @ApiProperty({ example: '999.99' })
     @IsString()

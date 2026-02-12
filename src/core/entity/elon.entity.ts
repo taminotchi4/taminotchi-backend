@@ -22,12 +22,12 @@ export class ElonEntity extends BaseEntity {
     category: CategoryEntity;
 
     @Index()
-    @Column({ type: 'uuid' })
-    supCategoryId: string;
+    @Column({ type: 'uuid', nullable: true })
+    supCategoryId: string | null;
 
-    @ManyToOne(() => SupCategoryEntity, (sc) => sc.elons, { onDelete: 'RESTRICT' })
+    @ManyToOne(() => SupCategoryEntity, (sc) => sc.elons, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'supCategoryId' })
-    supCategory: SupCategoryEntity;
+    supCategory: SupCategoryEntity | null;
 
     @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
     price: string | null;

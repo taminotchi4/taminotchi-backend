@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { randomInt, randomUUID } from 'crypto';
+import { randomInt } from 'crypto';
 import type { Redis } from 'ioredis';
 import { Repository } from 'typeorm';
 
@@ -83,6 +83,12 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     return successRes({ otpCode: code });
   }
 
+  async checkPhone(phoneNumber: string) {
+    const phone = phoneNumber.trim();
+    const exists = await this.repo.findOne({ where: { phoneNumber: phone } as any });
+    return successRes({ exists: Boolean(exists) });
+  }
+
   async verifyRegisterOtp(dto: VerifyClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
     const key = `otp:client:${phoneNumber}`;
@@ -107,32 +113,33 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     }
 
     await this.redis.del(key);
-    const verifyToken = randomUUID();
     await this.redis.set(
-      `otp:client:verified:${phoneNumber}:${verifyToken}`,
+      `otp:client:verified:${phoneNumber}`,
       '1',
       'EX',
       this.VERIFY_TTL_SEC,
     );
 
-    return successRes({ verifyToken });
+    return successRes({ verified: true });
   }
 
   async completeRegister(dto: RegisterClientDto): Promise<ISuccess<any>> {
     const phoneNumber = dto.phoneNumber.trim();
-    const verifyKey = `otp:client:verified:${phoneNumber}:${dto.verifyToken}`;
+    const verifyKey = `otp:client:verified:${phoneNumber}`;
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
-    const existsUsername = await this.repo.findOne({ where: { username: dto.username } as any });
-    if (existsUsername) throw new ConflictException('Username already exists');
+    if (dto.username) {
+      const existsUsername = await this.repo.findOne({ where: { username: dto.username } as any });
+      if (existsUsername) throw new ConflictException('Username already exists');
+    }
 
     const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const entity = this.repo.create({
-      fullName: dto.fullName,
-      username: dto.username.trim(),
+      ...(dto.fullName ? { fullName: dto.fullName } : {}),
+      ...(dto.username ? { username: dto.username.trim() } : {}),
       password: await this.crypto.encrypt(dto.password),
       phoneNumber,
       ...(dto.language ? { language: dto.language } : {}),

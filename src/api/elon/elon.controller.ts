@@ -8,10 +8,12 @@ import {
   Patch,
   Post,
   Req,
+  UploadedFiles,
   UseGuards,
   ForbiddenException,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { ElonService } from './elon.service';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
@@ -19,6 +21,8 @@ import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
 import { UserRole } from 'src/common/enum/index.enum';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { buildMulterOptions, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
 @ApiTags('Elon')
 @Controller('elon')
@@ -29,11 +33,41 @@ export class ElonController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.CLIENT)
   @Post()
-  create(@Body() createElonDto: CreateElonDto, @Req() req: any) {
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        categoryId: { type: 'string', format: 'uuid' },
+        supCategoryId: { type: 'string', format: 'uuid' },
+        price: { type: 'string' },
+        groupId: { type: 'string', format: 'uuid' },
+        photo: { type: 'string', format: 'binary' },
+      },
+      required: ['text', 'categoryId'],
+    },
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: 'photo', maxCount: 10 }],
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 5 }),
+    ),
+  )
+  create(
+    @Body() createElonDto: CreateElonDto,
+    @Req() req: any,
+    @UploadedFiles() files: { photo?: Express.Multer.File[] },
+  ) {
     if (req?.user?.role !== UserRole.CLIENT) {
       throw new ForbiddenException('Only client can create elon');
     }
-    return this.elonService.createForClient(createElonDto, req.user.id);
+    const photos = files?.photo ?? [];
+    return this.elonService.createForClient(
+      createElonDto,
+      req.user.id,
+      photos.map((p) => toPublicPath('elon', p.filename)),
+    );
   }
 
   @Get()
@@ -50,8 +84,38 @@ export class ElonController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateElonDto: UpdateElonDto) {
-    return this.elonService.update(id, updateElonDto);
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        categoryId: { type: 'string', format: 'uuid' },
+        supCategoryId: { type: 'string', format: 'uuid' },
+        price: { type: 'string' },
+        groupId: { type: 'string', format: 'uuid' },
+        status: { type: 'string' },
+        photo: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: 'photo', maxCount: 10 }],
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 5 }),
+    ),
+  )
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateElonDto: UpdateElonDto,
+    @UploadedFiles() files: { photo?: Express.Multer.File[] },
+  ) {
+    const photos = files?.photo ?? [];
+    return this.elonService.updateWithPhoto(
+      id,
+      updateElonDto,
+      photos.map((p) => toPublicPath('elon', p.filename)),
+    );
   }
 
   @ApiBearerAuth()

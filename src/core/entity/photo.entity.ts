@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { ProductEntity } from './product.entity';
 import { ElonEntity } from './elon.entity';
 import { BaseEntity } from './base.entity';
@@ -8,11 +8,19 @@ export class PhotoEntity extends BaseEntity {
     @Column({ type: 'varchar' })
     path: string;
 
-    // diagramda: product.photoId -> photo.id
-    @OneToMany(() => ProductEntity, (p) => p.photo)
-    products: ProductEntity[];
+    @Index()
+    @Column({ type: 'uuid', nullable: true })
+    productId: string | null;
 
-    // diagramda: elon.photoId -> photo.id
-    @OneToMany(() => ElonEntity, (e) => e.photo)
-    elons: ElonEntity[];
+    @ManyToOne(() => ProductEntity, (p) => p.photos, { nullable: true, onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'productId' })
+    product: ProductEntity | null;
+
+    @Index()
+    @Column({ type: 'uuid', nullable: true })
+    elonId: string | null;
+
+    @ManyToOne(() => ElonEntity, (e) => e.photos, { nullable: true, onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'elonId' })
+    elon: ElonEntity | null;
 }

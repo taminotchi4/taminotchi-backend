@@ -86,6 +86,7 @@ export class CategoryService {
       const category = this.categoryRepo.create({
         nameUz,
         nameRu: dto.nameRu ?? null,
+        hintText: dto.hintText ?? null,
         photoUrl: files?.photoUrl ?? null,
         iconUrl: files?.iconUrl ?? null,
       });
@@ -101,8 +102,14 @@ export class CategoryService {
   async findAll(lang?: 'uz' | 'ru'): Promise<ISuccess<any[]>> {
     const data = await this.categoryRepo.find({
       order: { createdAt: 'DESC' } as any,
+      relations: { supCategories: true },
     });
-    return successRes(data.map((c) => this.withName(this.withUrls(c) as any, lang)));
+    return successRes(
+      data.map((c) => ({
+        ...this.withName(this.withUrls(c) as any, lang),
+        supCategoryCount: c.supCategories?.length ?? 0,
+      })),
+    );
   }
 
   async findOne(id: string, lang?: 'uz' | 'ru'): Promise<ISuccess<any>> {
@@ -141,6 +148,7 @@ export class CategoryService {
       }
 
       if (dto.nameRu !== undefined) category.nameRu = dto.nameRu ?? null;
+      if (dto.hintText !== undefined) category.hintText = dto.hintText ?? null;
 
       // Fayl kelsa update qilamiz, kelmasa eski qoladi
       if (files?.photoUrl !== undefined && files.photoUrl !== null && files.photoUrl !== "") {

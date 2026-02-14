@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, Index, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index, OneToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { CategoryEntity } from './category.entity';
 import { PhotoEntity } from './photo.entity';
@@ -36,13 +36,8 @@ export class ProductEntity extends BaseEntity {
     @Column({ type: 'varchar', nullable: true })
     description: string | null;
 
-    @Index()
-    @Column({ type: 'uuid', nullable: true })
-    photoId: string | null;
-
-    @ManyToOne(() => PhotoEntity, (p) => p.products, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'photoId' })
-    photo: PhotoEntity | null;
+    @OneToMany(() => PhotoEntity, (p) => p.product)
+    photos: PhotoEntity[];
 
     @Index()
     @Column({ type: 'uuid' })

@@ -14,6 +14,11 @@ export class CreateCategoryDto {
     @MaxLength(100)
     nameRu?: string | null;
 
+    @ApiPropertyOptional({ example: 'Qisqa izoh (hint)' })
+    @IsOptional()
+    @IsString()
+    hintText?: string | null;
+
     // multipart file fields (to satisfy whitelist validation)
     @Allow()
     photo?: any;

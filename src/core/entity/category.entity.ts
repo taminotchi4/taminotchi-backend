@@ -19,6 +19,9 @@ export class CategoryEntity extends BaseEntity {
     @Column({ type: 'varchar', nullable: true })
     iconUrl: string | null;
 
+    @Column({ type: 'text', nullable: true })
+    hintText: string | null;
+
     // product.categoryId
     @OneToMany(() => ProductEntity, (p) => p.category)
     products: ProductEntity[];

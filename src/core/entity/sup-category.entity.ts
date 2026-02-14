@@ -26,6 +26,9 @@ export class SupCategoryEntity extends BaseEntity {
     @Column({ type: 'varchar', nullable: true })
     iconUrl: string | null;
 
+    @Column({ type: 'text', nullable: true })
+    hintText: string | null;
+
     // product.supCategoryId
     @OneToMany(() => ProductEntity, (p) => p.supCategory)
     products: ProductEntity[];

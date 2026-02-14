@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+    Allow,
     IsNotEmpty,
     IsOptional,
     IsString,
@@ -31,8 +32,6 @@ export class CreateElonDto {
     @IsUUID()
     groupId?: string | null;
 
-    @ApiPropertyOptional({ example: 'd00df00d-1111-2222-3333-444455556666' })
-    @IsOptional()
-    @IsUUID()
-    photoId?: string | null;
+    @Allow()
+    photo?: any;
 }

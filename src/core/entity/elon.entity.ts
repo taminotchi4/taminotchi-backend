@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, Index, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, Index, OneToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { CategoryEntity } from './category.entity';
 import { GroupEntity } from './group.entity';
@@ -43,13 +43,8 @@ export class ElonEntity extends BaseEntity {
     @JoinColumn({ name: 'groupId' })
     group: GroupEntity | null;
 
-    @Index()
-    @Column({ type: 'uuid', nullable: true })
-    photoId: string | null;
-
-    @ManyToOne(() => PhotoEntity, (p) => p.elons, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'photoId' })
-    photo: PhotoEntity | null;
+    @OneToMany(() => PhotoEntity, (p) => p.elon)
+    photos: PhotoEntity[];
 
     @Index()
     @Column({ type: 'uuid' })

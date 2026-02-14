@@ -97,6 +97,7 @@ export class SupCategoryService {
       const supCategory = this.supCategoryRepo.create({
         nameUz,
         nameRu: dto.nameRu ?? null,
+        hintText: dto.hintText ?? null,
         categoryId: dto.categoryId,
         photoUrl: files?.photoUrl ?? null,
         iconUrl: files?.iconUrl ?? null,
@@ -147,6 +148,7 @@ export class SupCategoryService {
       }
 
       if (dto.nameRu !== undefined) supCategory.nameRu = dto.nameRu ?? null;
+      if (dto.hintText !== undefined) supCategory.hintText = dto.hintText ?? null;
 
       if (dto.categoryId !== undefined) {
         await this.ensureCategoryExists(dto.categoryId);

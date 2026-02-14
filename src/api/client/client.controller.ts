@@ -35,10 +35,9 @@ export class ClientController {
   }
 
   @ApiOperation({ summary: 'Check client phone exists' })
-  @ApiBody({ type: CheckClientPhoneDto })
-  @Post('check-phone')
-  checkPhone(@Body() dto: CheckClientPhoneDto) {
-    return this.clientService.checkPhone(dto.phoneNumber);
+  @Get('check-phone/:phone')
+  checkPhone(@Param('phone') phone: string) {
+    return this.clientService.checkPhone(phone);
   }
 
   @ApiOperation({ summary: 'Client register - verify OTP' })

@@ -7,6 +7,7 @@ import { ISuccess, successRes } from 'src/infrastructure/response/success.respon
 
 import { ProductEntity } from 'src/core/entity/product.entity';
 import { CommentEntity, CommentScope } from 'src/core/entity/comment.entity';
+import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -17,14 +18,21 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     protected readonly productRepo: Repository<ProductEntity>,
     @InjectRepository(CommentEntity)
     private readonly commentRepo: Repository<CommentEntity>,
+    @InjectRepository(PhotoEntity)
+    private readonly photoRepo: Repository<PhotoEntity>,
   ) {
     super(productRepo);
   }
 
-  async createForMarket(dto: CreateProductDto, marketId: string): Promise<ISuccess<ProductEntity>> {
+  async createForMarket(
+    dto: CreateProductDto,
+    marketId: string,
+    photoPaths?: string[],
+  ): Promise<ISuccess<ProductEntity>> {
     return this.productRepo.manager.transaction(async (manager) => {
       const prodRepo = manager.getRepository(ProductEntity);
       const commRepo = manager.getRepository(CommentEntity);
+      const photoRepo = manager.getRepository(PhotoEntity);
 
       const product = prodRepo.create({
         name: dto.name.trim(),
@@ -34,7 +42,6 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         price: dto.price,
         amount: dto.amount,
         description: dto.description ?? null,
-        photoId: dto.photoId ?? null,
         commentId: null,
       });
 
@@ -50,11 +57,27 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       savedProduct.commentId = savedComment.id;
 
       const finalProduct = await prodRepo.save(savedProduct);
+
+      if (photoPaths?.length) {
+        const photos = photoPaths.map((path) =>
+          photoRepo.create({
+            path,
+            productId: finalProduct.id,
+            elonId: null,
+          }),
+        );
+        await photoRepo.save(photos);
+      }
+
       return successRes(finalProduct, 201);
     });
   }
 
-  override async update(id: string, dto: UpdateProductDto): Promise<ISuccess<ProductEntity>> {
+  async updateWithPhoto(
+    id: string,
+    dto: UpdateProductDto,
+    photoPaths?: string[],
+  ): Promise<ISuccess<ProductEntity>> {
     const product = await this.repo.findOne({ where: { id } as any });
     if (!product) throw new NotFoundException('Not found');
 
@@ -64,10 +87,20 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     if (dto.price !== undefined) product.price = dto.price;
     if (dto.amount !== undefined) product.amount = dto.amount;
     if (dto.description !== undefined) product.description = dto.description ?? null;
-    if (dto.photoId !== undefined) product.photoId = dto.photoId ?? null;
     if (dto.isActive !== undefined) product.isActive = dto.isActive;
 
     const saved = await this.repo.save(product);
+    if (photoPaths?.length) {
+      await this.photoRepo.save(
+        photoPaths.map((path) =>
+          this.photoRepo.create({
+            path,
+            productId: saved.id,
+            elonId: null,
+          }),
+        ),
+      );
+    }
     return successRes(saved);
   }
 

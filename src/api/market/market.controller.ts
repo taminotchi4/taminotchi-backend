@@ -46,10 +46,9 @@ export class MarketController {
   }
 
   @ApiOperation({ summary: 'Check market phone exists' })
-  @ApiBody({ type: CheckMarketPhoneDto })
-  @Post('check-phone')
-  checkPhone(@Body() dto: CheckMarketPhoneDto) {
-    return this.marketService.checkPhone(dto.phoneNumber);
+  @Get('check-phone/:phone')
+  checkPhone(@Param('phone') phone: string) {
+    return this.marketService.checkPhone(phone);
   }
 
   @ApiOperation({ summary: 'Market register - verify OTP' })

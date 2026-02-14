@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+    Allow,
     IsNotEmpty,
     IsNumber,
     IsOptional,
@@ -38,8 +39,7 @@ export class CreateProductDto {
     @IsString()
     description?: string | null;
 
-    @ApiPropertyOptional({ example: 'c0ffee00-1111-2222-3333-444455556666' })
-    @IsOptional()
-    @IsUUID()
-    photoId?: string | null;
+    @Allow()
+    photo?: any;
+
 }

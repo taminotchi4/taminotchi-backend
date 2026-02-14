@@ -6,6 +6,7 @@ import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
 import { ElonEntity } from 'src/core/entity/elon.entity';
 import { CommentEntity, CommentScope } from 'src/core/entity/comment.entity';
+import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
 
@@ -16,14 +17,21 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     protected readonly elonRepo: Repository<ElonEntity>,
     @InjectRepository(CommentEntity)
     private readonly commentRepo: Repository<CommentEntity>,
+    @InjectRepository(PhotoEntity)
+    private readonly photoRepo: Repository<PhotoEntity>,
   ) {
     super(elonRepo);
   }
 
-  async createForClient(dto: CreateElonDto, clientId: string): Promise<ISuccess<ElonEntity>> {
+  async createForClient(
+    dto: CreateElonDto,
+    clientId: string,
+    photoPaths?: string[],
+  ): Promise<ISuccess<ElonEntity>> {
     return this.elonRepo.manager.transaction(async (manager) => {
       const eRepo = manager.getRepository(ElonEntity);
       const cRepo = manager.getRepository(CommentEntity);
+      const photoRepo = manager.getRepository(PhotoEntity);
 
       const elon = eRepo.create({
         text: dto.text.trim(),
@@ -32,7 +40,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         clientId,
         price: dto.price ?? null,
         groupId: dto.groupId ?? null,
-        photoId: dto.photoId ?? null,
         commentId: null,
       });
 
@@ -48,11 +55,26 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       savedElon.commentId = savedComment.id;
 
       const finalElon = await eRepo.save(savedElon);
+      if (photoPaths?.length) {
+        await photoRepo.save(
+          photoPaths.map((path) =>
+            photoRepo.create({
+              path,
+              elonId: finalElon.id,
+              productId: null,
+            }),
+          ),
+        );
+      }
       return successRes(finalElon, 201);
     });
   }
 
-  override async update(id: string, dto: UpdateElonDto): Promise<ISuccess<ElonEntity>> {
+  async updateWithPhoto(
+    id: string,
+    dto: UpdateElonDto,
+    photoPaths?: string[],
+  ): Promise<ISuccess<ElonEntity>> {
     const elon = await this.repo.findOne({ where: { id } as any });
     if (!elon) throw new NotFoundException('Not found');
 
@@ -61,10 +83,20 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (dto.supCategoryId !== undefined) elon.supCategoryId = dto.supCategoryId;
     if (dto.price !== undefined) elon.price = dto.price ?? null;
     if (dto.groupId !== undefined) elon.groupId = dto.groupId ?? null;
-    if (dto.photoId !== undefined) elon.photoId = dto.photoId ?? null;
     if (dto.status !== undefined) elon.status = dto.status;
 
     const saved = await this.repo.save(elon);
+    if (photoPaths?.length) {
+      await this.photoRepo.save(
+        photoPaths.map((path) =>
+          this.photoRepo.create({
+            path,
+            elonId: saved.id,
+            productId: null,
+          }),
+        ),
+      );
+    }
     return successRes(saved);
   }
 

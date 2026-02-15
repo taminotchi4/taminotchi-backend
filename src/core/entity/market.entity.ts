@@ -15,6 +15,9 @@ export class MarketEntity extends BaseEntity {
     @Column({ type: 'varchar', unique: true })
     phoneNumber: string;
 
+    @Column({ type: 'varchar', unique: true, nullable: true })
+    username: string | null;
+
     @Column({ type: 'varchar' })
     password: string;
 

@@ -21,6 +21,11 @@ export class CreateMarketDto {
     @IsPhoneNumber('UZ')
     phoneNumber: string;
 
+    @ApiPropertyOptional({ example: 'tech_market' })
+    @IsOptional()
+    @IsString()
+    username?: string | null;
+
     @ApiProperty({ example: 'Password123' })
     @IsString()
     @MinLength(6)

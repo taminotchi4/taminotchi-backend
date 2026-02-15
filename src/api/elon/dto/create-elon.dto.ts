@@ -13,6 +13,11 @@ export class CreateElonDto {
     @IsNotEmpty()
     text: string;
 
+    @ApiPropertyOptional({ example: 'Toshkent, Chilonzor' })
+    @IsOptional()
+    @IsString()
+    adressname?: string | null;
+
     @ApiProperty({ example: 'b5b6f7d8-1111-2222-3333-444455556666' })
     @IsUUID()
     categoryId: string;

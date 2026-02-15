@@ -49,6 +49,8 @@ export class SupCategoryController {
       properties: {
         nameUz: { type: 'string', example: 'Smartfonlar' },
         nameRu: { type: 'string', example: 'Смартфоны' },
+        hintText: { type: 'string', example: 'Qisqa izoh' },
+        withAdress: { type: 'boolean', example: false },
         categoryId: { type: 'string', format: 'uuid' },
         photo: { type: 'string', format: 'binary' },
         icon: { type: 'string', format: 'binary' },
@@ -90,6 +92,8 @@ export class SupCategoryController {
       properties: {
         nameUz: { type: 'string', example: 'Smartfonlar' },
         nameRu: { type: 'string', example: 'Смартфоны' },
+        hintText: { type: 'string', example: 'Qisqa izoh' },
+        withAdress: { type: 'boolean', example: false },
         categoryId: { type: 'string', format: 'uuid' },
         photo: { type: 'string', format: 'binary' },
         icon: { type: 'string', format: 'binary' },

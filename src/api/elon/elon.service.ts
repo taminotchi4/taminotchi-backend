@@ -35,6 +35,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       const elon = eRepo.create({
         text: dto.text.trim(),
+        adressname: dto.adressname?.trim() ?? null,
         categoryId: dto.categoryId,
         ...(dto.supCategoryId ? { supCategoryId: dto.supCategoryId } : {}),
         clientId,
@@ -79,6 +80,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (!elon) throw new NotFoundException('Not found');
 
     if (dto.text !== undefined) elon.text = dto.text.trim();
+    if (dto.adressname !== undefined) elon.adressname = dto.adressname?.trim() ?? null;
     if (dto.categoryId !== undefined) elon.categoryId = dto.categoryId;
     if (dto.supCategoryId !== undefined) elon.supCategoryId = dto.supCategoryId;
     if (dto.price !== undefined) elon.price = dto.price ?? null;

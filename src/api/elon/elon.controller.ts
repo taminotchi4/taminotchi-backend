@@ -39,6 +39,7 @@ export class ElonController {
       type: 'object',
       properties: {
         text: { type: 'string' },
+        adressname: { type: 'string' },
         categoryId: { type: 'string', format: 'uuid' },
         supCategoryId: { type: 'string', format: 'uuid' },
         price: { type: 'string' },
@@ -90,6 +91,7 @@ export class ElonController {
       type: 'object',
       properties: {
         text: { type: 'string' },
+        adressname: { type: 'string' },
         categoryId: { type: 'string', format: 'uuid' },
         supCategoryId: { type: 'string', format: 'uuid' },
         price: { type: 'string' },

@@ -29,6 +29,9 @@ export class SupCategoryEntity extends BaseEntity {
     @Column({ type: 'text', nullable: true })
     hintText: string | null;
 
+    @Column({ type: 'boolean', default: false })
+    withAdress: boolean;
+
     // product.supCategoryId
     @OneToMany(() => ProductEntity, (p) => p.supCategory)
     products: ProductEntity[];

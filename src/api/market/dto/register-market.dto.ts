@@ -19,6 +19,11 @@ export class RegisterMarketDto {
   @IsString()
   name?: string;
 
+  @ApiPropertyOptional({ example: 'tech_market' })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
   @ApiProperty({ example: 'Password123' })
   @IsString()
   @MinLength(6)

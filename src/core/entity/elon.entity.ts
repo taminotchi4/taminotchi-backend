@@ -13,6 +13,9 @@ export class ElonEntity extends BaseEntity {
     @Column({ type: 'text' })
     text: string;
 
+    @Column({ type: 'varchar', nullable: true })
+    adressname: string | null;
+
     @Index()
     @Column({ type: 'uuid' })
     categoryId: string;

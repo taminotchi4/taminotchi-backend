@@ -89,6 +89,13 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     return successRes({ exists: Boolean(exists) });
   }
 
+  async checkUsername(username: string) {
+    const value = username.trim();
+    if (!value) return successRes({ exists: false });
+    const exists = await this.repo.findOne({ where: { username: value } as any });
+    return successRes({ exists: Boolean(exists) });
+  }
+
   async verifyRegisterOtp(dto: VerifyClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
     const key = `otp:client:${phoneNumber}`;

@@ -6,7 +6,6 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
-import { CheckClientPhoneDto } from './dto/check-phone.dto';
 
 import { UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
@@ -38,6 +37,12 @@ export class ClientController {
   @Get('check-phone/:phone')
   checkPhone(@Param('phone') phone: string) {
     return this.clientService.checkPhone(phone);
+  }
+
+  @ApiOperation({ summary: 'Check client username exists' })
+  @Get('check-username/:username')
+  checkUsername(@Param('username') username: string) {
+    return this.clientService.checkUsername(username);
   }
 
   @ApiOperation({ summary: 'Client register - verify OTP' })

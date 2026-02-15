@@ -22,6 +22,9 @@ export class CategoryEntity extends BaseEntity {
     @Column({ type: 'text', nullable: true })
     hintText: string | null;
 
+    @Column({ type: 'boolean', default: false })
+    withAdress: boolean;
+
     // product.categoryId
     @OneToMany(() => ProductEntity, (p) => p.category)
     products: ProductEntity[];

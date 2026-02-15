@@ -51,6 +51,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       safeUser: (m) => ({
         id: m.id,
         name: m.name,
+        username: m.username,
         phoneNumber: m.phoneNumber,
         photoPath: m.photoPath ?? null,
         role: m.role,
@@ -82,6 +83,40 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const phone = phoneNumber.trim();
     const exists = await this.repo.findOne({ where: { phoneNumber: phone } as any });
     return successRes({ exists: Boolean(exists) });
+  }
+
+  async checkUsername(username: string) {
+    const value = username.trim();
+    if (!value) return successRes({ exists: false });
+    const exists = await this.repo.findOne({ where: { username: value } as any });
+    return successRes({ exists: Boolean(exists) });
+  }
+
+  override async create(dto: CreateMarketDto): Promise<ISuccess<any>> {
+    const phoneNumber = dto.phoneNumber.trim();
+
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    if (existsPhone) throw new ConflictException('Phone number already exists');
+
+    if (dto.username && dto.username !== undefined) {
+      const username = dto.username.trim();
+      if (!username) throw new BadRequestException('Username cannot be empty');
+      const existsUsername = await this.repo.findOne({ where: { username } as any });
+      if (existsUsername) throw new ConflictException('Username already exists');
+    }
+
+    const entity = this.repo.create({
+      ...(dto.name ? { name: dto.name.trim() } : {}),
+      phoneNumber,
+      ...(dto.username && dto.username !== undefined ? { username: dto.username.trim() } : {}),
+      password: await this.crypto.encrypt(dto.password),
+      adressId: dto.adressId ?? null,
+      ...(dto.language ? { language: dto.language } : {}),
+      photoPath: dto.photoPath ?? null,
+    });
+
+    const saved = await this.repo.save(entity);
+    return successRes(this.safe(saved), 201);
   }
 
   async verifyRegisterOtp(dto: VerifyMarketOtpDto) {
@@ -126,9 +161,16 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
+    if (dto.username !== undefined) {
+      const username = dto.username.trim();
+      if (!username) throw new BadRequestException('Username cannot be empty');
+      const existsUsername = await this.repo.findOne({ where: { username } as any });
+      if (existsUsername) throw new ConflictException('Username already exists');
+    }
 
     const entity = this.repo.create({
       ...(dto.name ? { name: dto.name.trim() } : {}),
+      ...(dto.username !== undefined ? { username: dto.username.trim() } : {}),
       phoneNumber,
       password: await this.crypto.encrypt(dto.password),
       adressId: dto.adressId ?? null,
@@ -153,6 +195,16 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       if (existsPhone && (existsPhone as any).id !== id)
         throw new ConflictException('Phone number already exists');
       market.phoneNumber = phone;
+    }
+    if (dto.username !== undefined) {
+      const username = dto.username?.trim() ?? null;
+      if (username) {
+        const existsUsername = await this.repo.findOne({ where: { username } as any });
+        if (existsUsername && (existsUsername as any).id !== id) {
+          throw new ConflictException('Username already exists');
+        }
+      }
+      market.username = username;
     }
 
     if (dto.password) {

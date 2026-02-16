@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { AuthCommonModule } from 'src/common/auth/auth-common.module';
 import { CryptoService } from 'src/infrastructure/crypto/crypto.service';
+import { AdressEntity } from 'src/core/entity/adress.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MarketEntity]), AuthCommonModule],
+  imports: [TypeOrmModule.forFeature([MarketEntity, AdressEntity]), AuthCommonModule],
   controllers: [MarketController],
   providers: [MarketService, CryptoService],
   exports: [MarketService],

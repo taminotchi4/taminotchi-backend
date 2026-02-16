@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
     Allow,
     IsNotEmpty,
@@ -23,6 +24,7 @@ export class CreateElonDto {
     categoryId: string;
 
     @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
+    @Transform(({ value }) => (value === '' ? undefined : value))
     @IsOptional()
     @IsUUID()
     supCategoryId?: string | null;
@@ -33,6 +35,7 @@ export class CreateElonDto {
     price?: string | null;
 
     @ApiPropertyOptional({ example: 'c0ffee00-1111-2222-3333-444455556666' })
+    @Transform(({ value }) => (value === '' ? undefined : value))
     @IsOptional()
     @IsUUID()
     groupId?: string | null;

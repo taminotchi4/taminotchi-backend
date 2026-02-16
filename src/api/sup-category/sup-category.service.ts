@@ -38,7 +38,7 @@ export class SupCategoryService {
 
   private async ensureCategoryExists(categoryId: string) {
     const category = await this.categoryRepo.findOne({ where: { id: categoryId } });
-    if (!category) throw new BadRequestException('Category not found');
+    if (!category) throw new NotFoundException('category not found');
   }
 
   private toDiskPath(publicPath: string) {

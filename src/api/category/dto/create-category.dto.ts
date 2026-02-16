@@ -1,5 +1,6 @@
 import { Allow, IsBoolean, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateCategoryDto {
     @ApiProperty({ example: 'Avto ehtiyot qismlar' })
@@ -20,6 +21,12 @@ export class CreateCategoryDto {
     hintText?: string | null;
 
     @ApiPropertyOptional({ example: false })
+    @Transform(({ value }) => {
+        if (value === '' || value === null || value === undefined) return undefined;
+        if (value === 'true' || value === true) return true;
+        if (value === 'false' || value === false) return false;
+        return value;
+    })
     @IsOptional()
     @IsBoolean()
     withAdress?: boolean;

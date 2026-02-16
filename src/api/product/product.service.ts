@@ -8,6 +8,8 @@ import { ISuccess, successRes } from 'src/infrastructure/response/success.respon
 import { ProductEntity } from 'src/core/entity/product.entity';
 import { CommentEntity, CommentScope } from 'src/core/entity/comment.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
+import { CategoryEntity } from 'src/core/entity/category.entity';
+import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -20,6 +22,10 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     private readonly commentRepo: Repository<CommentEntity>,
     @InjectRepository(PhotoEntity)
     private readonly photoRepo: Repository<PhotoEntity>,
+    @InjectRepository(CategoryEntity)
+    private readonly categoryRepo: Repository<CategoryEntity>,
+    @InjectRepository(SupCategoryEntity)
+    private readonly supCategoryRepo: Repository<SupCategoryEntity>,
   ) {
     super(productRepo);
   }
@@ -33,6 +39,15 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const prodRepo = manager.getRepository(ProductEntity);
       const commRepo = manager.getRepository(CommentEntity);
       const photoRepo = manager.getRepository(PhotoEntity);
+      const categoryRepo = manager.getRepository(CategoryEntity);
+      const supCategoryRepo = manager.getRepository(SupCategoryEntity);
+
+      await this.ensureRelationsExist({
+        categoryId: dto.categoryId,
+        supCategoryId: dto.supCategoryId,
+        categoryRepo,
+        supCategoryRepo,
+      });
 
       const product = prodRepo.create({
         name: dto.name.trim(),
@@ -81,6 +96,11 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     const product = await this.repo.findOne({ where: { id } as any });
     if (!product) throw new NotFoundException('Not found');
 
+    await this.ensureRelationsExist({
+      categoryId: dto.categoryId,
+      supCategoryId: dto.supCategoryId,
+    });
+
     if (dto.name !== undefined) product.name = dto.name.trim();
     if (dto.categoryId !== undefined) product.categoryId = dto.categoryId;
     if (dto.supCategoryId !== undefined) product.supCategoryId = dto.supCategoryId;
@@ -121,5 +141,25 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
 
       return successRes({ deleted: true });
     });
+  }
+
+  private async ensureRelationsExist(params: {
+    categoryId?: string | null;
+    supCategoryId?: string | null;
+    categoryRepo?: Repository<CategoryEntity>;
+    supCategoryRepo?: Repository<SupCategoryEntity>;
+  }): Promise<void> {
+    const categoryRepo = params.categoryRepo ?? this.categoryRepo;
+    const supCategoryRepo = params.supCategoryRepo ?? this.supCategoryRepo;
+
+    if (params.categoryId) {
+      const exists = await categoryRepo.exist({ where: { id: params.categoryId } });
+      if (!exists) throw new NotFoundException('category not found');
+    }
+
+    if (params.supCategoryId) {
+      const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId } });
+      if (!exists) throw new NotFoundException('supcategory not found');
+    }
   }
 }

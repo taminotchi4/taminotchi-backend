@@ -18,12 +18,15 @@ import { MarketLoginDto } from './dto/market-login.dto';
 import { RequestMarketOtpDto } from './dto/request-otp.dto';
 import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
+import { AdressEntity } from 'src/core/entity/adress.entity';
 
 @Injectable()
 export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto, MarketEntity> {
   constructor(
     @InjectRepository(MarketEntity)
     protected readonly marketRepo: Repository<MarketEntity>,
+    @InjectRepository(AdressEntity)
+    private readonly adressRepo: Repository<AdressEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
@@ -92,8 +95,15 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     return successRes({ exists: Boolean(exists) });
   }
 
+  private async ensureAdressExists(adressId?: string | null) {
+    if (!adressId) return;
+    const exists = await this.adressRepo.exist({ where: { id: adressId } });
+    if (!exists) throw new NotFoundException('adress not found');
+  }
+
   override async create(dto: CreateMarketDto): Promise<ISuccess<any>> {
     const phoneNumber = dto.phoneNumber.trim();
+    await this.ensureAdressExists(dto.adressId);
 
     const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
@@ -155,6 +165,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async completeRegister(dto: RegisterMarketDto): Promise<ISuccess<any>> {
     const phoneNumber = dto.phoneNumber.trim();
+    await this.ensureAdressExists(dto.adressId);
     const verifyKey = `otp:market:verified:${phoneNumber}`;
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
@@ -186,6 +197,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   override async update(id: string, dto: UpdateMarketDto): Promise<ISuccess<any>> {
     const market = await this.repo.findOne({ where: { id } as any });
     if (!market) throw new NotFoundException('Not found');
+    await this.ensureAdressExists(dto.adressId);
 
     if (dto.name !== undefined) market.name = dto.name;
 

@@ -30,6 +30,7 @@ import { CommentModule } from './api/comment/comment.module';
 import { ElonModule } from './api/elon/elon.module';
 import { SupCategoryModule } from './api/sup-category/sup-category.module';
 import { LanguageMiddleware } from './common/middleware/language.middleware';
+import { GroupModule } from './api/group/group.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { LanguageMiddleware } from './common/middleware/language.middleware';
     CommentModule,
     ElonModule,
     SupCategoryModule,
+    GroupModule,
   ],
   providers: [LanguageMiddleware],
 })

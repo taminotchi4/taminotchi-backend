@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
     Allow,
     IsNotEmpty,
@@ -20,6 +21,7 @@ export class CreateProductDto {
     categoryId: string;
 
     @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
+    @Transform(({ value }) => (value === '' ? undefined : value))
     @IsOptional()
     @IsUUID()
     supCategoryId?: string | null;

@@ -7,6 +7,9 @@ import { ISuccess, successRes } from 'src/infrastructure/response/success.respon
 import { ElonEntity } from 'src/core/entity/elon.entity';
 import { CommentEntity, CommentScope } from 'src/core/entity/comment.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
+import { CategoryEntity } from 'src/core/entity/category.entity';
+import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
+import { GroupEntity } from 'src/core/entity/group.entity';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
 
@@ -19,6 +22,12 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     private readonly commentRepo: Repository<CommentEntity>,
     @InjectRepository(PhotoEntity)
     private readonly photoRepo: Repository<PhotoEntity>,
+    @InjectRepository(CategoryEntity)
+    private readonly categoryRepo: Repository<CategoryEntity>,
+    @InjectRepository(SupCategoryEntity)
+    private readonly supCategoryRepo: Repository<SupCategoryEntity>,
+    @InjectRepository(GroupEntity)
+    private readonly groupRepo: Repository<GroupEntity>,
   ) {
     super(elonRepo);
   }
@@ -32,6 +41,18 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       const eRepo = manager.getRepository(ElonEntity);
       const cRepo = manager.getRepository(CommentEntity);
       const photoRepo = manager.getRepository(PhotoEntity);
+      const categoryRepo = manager.getRepository(CategoryEntity);
+      const supCategoryRepo = manager.getRepository(SupCategoryEntity);
+      const groupRepo = manager.getRepository(GroupEntity);
+
+      await this.ensureRelationsExist({
+        categoryId: dto.categoryId,
+        supCategoryId: dto.supCategoryId,
+        groupId: dto.groupId,
+        categoryRepo,
+        supCategoryRepo,
+        groupRepo,
+      });
 
       const elon = eRepo.create({
         text: dto.text.trim(),
@@ -79,6 +100,12 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     const elon = await this.repo.findOne({ where: { id } as any });
     if (!elon) throw new NotFoundException('Not found');
 
+    await this.ensureRelationsExist({
+      categoryId: dto.categoryId,
+      supCategoryId: dto.supCategoryId,
+      groupId: dto.groupId,
+    });
+
     if (dto.text !== undefined) elon.text = dto.text.trim();
     if (dto.adressname !== undefined) elon.adressname = dto.adressname?.trim() ?? null;
     if (dto.categoryId !== undefined) elon.categoryId = dto.categoryId;
@@ -119,5 +146,33 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       return successRes({ deleted: true });
     });
+  }
+
+  private async ensureRelationsExist(params: {
+    categoryId?: string | null;
+    supCategoryId?: string | null;
+    groupId?: string | null;
+    categoryRepo?: Repository<CategoryEntity>;
+    supCategoryRepo?: Repository<SupCategoryEntity>;
+    groupRepo?: Repository<GroupEntity>;
+  }): Promise<void> {
+    const categoryRepo = params.categoryRepo ?? this.categoryRepo;
+    const supCategoryRepo = params.supCategoryRepo ?? this.supCategoryRepo;
+    const groupRepo = params.groupRepo ?? this.groupRepo;
+
+    if (params.categoryId) {
+      const exists = await categoryRepo.exist({ where: { id: params.categoryId } });
+      if (!exists) throw new NotFoundException('category not found');
+    }
+
+    if (params.supCategoryId) {
+      const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId } });
+      if (!exists) throw new NotFoundException('supcategory not found');
+    }
+
+    if (params.groupId) {
+      const exists = await groupRepo.exist({ where: { id: params.groupId } });
+      if (!exists) throw new NotFoundException('group not found');
+    }
   }
 }

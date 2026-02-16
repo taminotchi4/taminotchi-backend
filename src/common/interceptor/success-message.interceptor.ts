@@ -33,6 +33,9 @@ export class SuccessMessageInterceptor implements NestInterceptor {
     if (Array.isArray(value)) {
       return value.map((v) => this.mapUploadUrls(v, base));
     }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
     if (!value || typeof value !== 'object') return value;
 
     const out: any = Array.isArray(value) ? [] : { ...value };

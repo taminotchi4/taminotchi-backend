@@ -33,7 +33,9 @@ export class CreateMarketDto {
     password: string;
 
     @ApiPropertyOptional({ example: '1f2c3d4e-5f6a-7b8c-9d0e-1a2b3c4d5e6f' })
-    @Transform(({ value }) => (value === '' ? undefined : value))
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
     @IsUUID()
     adressId?: string | null;

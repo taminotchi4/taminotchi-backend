@@ -6,6 +6,7 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    Matches,
 } from 'class-validator';
 
 export class CreateElonDto {
@@ -15,6 +16,9 @@ export class CreateElonDto {
     text: string;
 
     @ApiPropertyOptional({ example: 'Toshkent, Chilonzor' })
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
     @IsString()
     adressname?: string | null;
@@ -24,18 +28,27 @@ export class CreateElonDto {
     categoryId: string;
 
     @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
-    @Transform(({ value }) => (value === '' ? undefined : value))
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
     @IsUUID()
     supCategoryId?: string | null;
 
     @ApiPropertyOptional({ example: '999.99' })
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
-    @IsString()
+    @Matches(/^(?:0|[1-9]\d*)(?:\.\d+)?$/, {
+        message: 'price must be a non-negative number string',
+    })
     price?: string | null;
 
     @ApiPropertyOptional({ example: 'c0ffee00-1111-2222-3333-444455556666' })
-    @Transform(({ value }) => (value === '' ? undefined : value))
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
     @IsUUID()
     groupId?: string | null;

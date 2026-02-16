@@ -1,4 +1,5 @@
 import { Column, Entity, Index } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { UserRole } from '../../common/enum/index.enum';
 import { BaseEntity } from './base.entity';
 
@@ -9,6 +10,7 @@ export class AdminEntity extends BaseEntity {
     username: string;
 
     @Column({ type: 'varchar' })
+    @Exclude({ toPlainOnly: true })
     password: string;
 
     @Column({ type: 'varchar', unique: true })

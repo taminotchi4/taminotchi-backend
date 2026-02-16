@@ -44,7 +44,11 @@ export class ElonController {
         supCategoryId: { type: 'string', format: 'uuid' },
         price: { type: 'string' },
         groupId: { type: 'string', format: 'uuid' },
-        photo: { type: 'string', format: 'binary' },
+        photo: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          maxItems: 10,
+        },
       },
       required: ['text', 'categoryId'],
     },
@@ -97,7 +101,11 @@ export class ElonController {
         price: { type: 'string' },
         groupId: { type: 'string', format: 'uuid' },
         status: { type: 'string' },
-        photo: { type: 'string', format: 'binary' },
+        photo: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          maxItems: 10,
+        },
       },
     },
   })

@@ -7,6 +7,7 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    Matches,
     Min,
 } from 'class-validator';
 
@@ -21,7 +22,9 @@ export class CreateProductDto {
     categoryId: string;
 
     @ApiPropertyOptional({ example: 'e1e2e3e4-5555-6666-7777-88889999aaaa' })
-    @Transform(({ value }) => (value === '' ? undefined : value))
+    @Transform(({ value }) =>
+        typeof value === 'string' && value.trim() === '' ? undefined : value,
+    )
     @IsOptional()
     @IsUUID()
     supCategoryId?: string | null;
@@ -29,6 +32,9 @@ export class CreateProductDto {
     @ApiProperty({ example: '999.99' })
     @IsString()
     @IsNotEmpty()
+    @Matches(/^(?:0|[1-9]\d*)(?:\.\d+)?$/, {
+        message: 'price must be a non-negative number string',
+    })
     price: string;
 
     @ApiProperty({ example: 10 })

@@ -1,4 +1,5 @@
 import { Column, Entity, OneToMany } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { LanguageType, UserRole } from '../../common/enum/index.enum';
 import { OrderEntity } from './order.entity';
 import { ElonEntity } from './elon.entity';
@@ -14,6 +15,7 @@ export class ClientEntity extends BaseEntity {
     username: string | null;
 
     @Column({ type: 'varchar' })
+    @Exclude({ toPlainOnly: true })
     password: string;
 
     @Column({ type: 'varchar', unique: true })

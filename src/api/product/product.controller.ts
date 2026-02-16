@@ -44,7 +44,11 @@ export class ProductController {
         price: { type: 'string' },
         amount: { type: 'number' },
         description: { type: 'string' },
-        photo: { type: 'string', format: 'binary' },
+        photo: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          maxItems: 10,
+        },
       },
       required: ['name', 'categoryId', 'price', 'amount'],
     },
@@ -97,7 +101,11 @@ export class ProductController {
         amount: { type: 'number' },
         description: { type: 'string' },
         isActive: { type: 'boolean' },
-        photo: { type: 'string', format: 'binary' },
+        photo: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          maxItems: 10,
+        },
       },
     },
   })

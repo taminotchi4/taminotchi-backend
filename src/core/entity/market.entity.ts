@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { BaseEntity } from './base.entity';
 import { AdressEntity } from './adress.entity';
 import { ProductEntity } from './product.entity';
@@ -19,6 +20,7 @@ export class MarketEntity extends BaseEntity {
     username: string | null;
 
     @Column({ type: 'varchar' })
+    @Exclude({ toPlainOnly: true })
     password: string;
 
     @Column({ type: 'varchar', nullable: true })

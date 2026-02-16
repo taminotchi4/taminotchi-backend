@@ -40,6 +40,10 @@ export class SuccessMessageInterceptor implements NestInterceptor {
 
     const out: any = Array.isArray(value) ? [] : { ...value };
     for (const [k, v] of Object.entries(out)) {
+      if (k === 'password') {
+        delete out[k];
+        continue;
+      }
       if (typeof v === 'string') {
         if (/^https?:\/\//i.test(v)) {
           out[k] = v;

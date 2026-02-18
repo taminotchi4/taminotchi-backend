@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -84,7 +84,8 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         await photoRepo.save(photos);
       }
 
-      return successRes(finalProduct, 201);
+      const enriched = await this.enrichProducts([finalProduct]);
+      return successRes(enriched[0], 201);
     });
   }
 
@@ -121,7 +122,35 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         ),
       );
     }
-    return successRes(saved);
+    const enriched = await this.enrichProducts([saved]);
+    return successRes(enriched[0]);
+  }
+
+  override async findAll(): Promise<ISuccess<ProductEntity[]>> {
+    const data = await this.repo.find({
+      relations: {
+        category: true,
+        supCategory: true,
+        comment: true,
+      } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+    const enriched = await this.enrichProducts(data);
+    return successRes(enriched);
+  }
+
+  override async findOneById(id: string): Promise<ISuccess<ProductEntity>> {
+    const product = await this.repo.findOne({
+      where: { id } as any,
+      relations: {
+        category: true,
+        supCategory: true,
+        comment: true,
+      } as any,
+    });
+    if (!product) throw new NotFoundException('Not found');
+    const enriched = await this.enrichProducts([product]);
+    return successRes(enriched[0]);
   }
 
   override async delete(id: string): Promise<ISuccess<{ deleted: true }>> {
@@ -161,5 +190,55 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId } });
       if (!exists) throw new NotFoundException('supcategory not found');
     }
+  }
+
+  private async enrichProducts(products: ProductEntity[]): Promise<ProductEntity[]> {
+    if (!products.length) return [];
+
+    const productIds = products.map((p) => p.id);
+    const photos = await this.photoRepo.find({
+      where: { productId: In(productIds) } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+
+    const photosByProduct = new Map<string, PhotoEntity[]>();
+    for (const photo of photos) {
+      if (!photo.productId) continue;
+      const list = photosByProduct.get(photo.productId) ?? [];
+      list.push(photo);
+      photosByProduct.set(photo.productId, list);
+    }
+
+    const commentIds = products
+      .map((p) => p.commentId)
+      .filter((id): id is string => Boolean(id));
+
+    const messageCountByComment = new Map<string, number>();
+    if (commentIds.length) {
+      const rows = await this.commentRepo
+        .createQueryBuilder('c')
+        .leftJoin('c.messages', 'm')
+        .select('c.id', 'id')
+        .addSelect('COUNT(m.id)', 'messageCount')
+        .where('c.id IN (:...ids)', { ids: commentIds })
+        .groupBy('c.id')
+        .getRawMany<{ id: string; messageCount: string }>();
+
+      for (const row of rows) {
+        messageCountByComment.set(row.id, Number(row.messageCount));
+      }
+    }
+
+    for (const product of products as any[]) {
+      product.photos = photosByProduct.get(product.id) ?? [];
+      if (product.comment?.id) {
+        product.comment = {
+          ...product.comment,
+          messageCount: messageCountByComment.get(product.comment.id) ?? 0,
+        };
+      }
+    }
+
+    return products;
   }
 }

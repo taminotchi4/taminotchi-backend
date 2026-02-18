@@ -78,6 +78,14 @@ export class ClientController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.CLIENT)
+  @Get('me/elons')
+  myElons(@Req() req: any) {
+    return this.clientService.myElons(req.user.id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
   @Patch('me/profile')
   updateMe(@Req() req: any, @Body() dto: UpdateClientDto) {
     return this.clientService.updateMe(req.user.id, dto);

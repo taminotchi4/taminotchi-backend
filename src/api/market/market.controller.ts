@@ -89,6 +89,14 @@ export class MarketController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.MARKET)
+  @Get('me/products')
+  myProducts(@Req() req: any) {
+    return this.marketService.myProducts(req.user.id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.MARKET)
   @Patch('me/profile')
   updateMe(@Req() req: any, @Body() dto: UpdateMarketDto) {
     return this.marketService.updateMe(req.user.id, dto);

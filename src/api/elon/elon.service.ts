@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -10,6 +10,7 @@ import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { GroupEntity } from 'src/core/entity/group.entity';
+import { ElonStatus } from 'src/common/enum/index.enum';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
 
@@ -88,7 +89,8 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
           ),
         );
       }
-      return successRes(finalElon, 201);
+      const enriched = await this.enrichElons([finalElon]);
+      return successRes(enriched[0], 201);
     });
   }
 
@@ -126,7 +128,37 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         ),
       );
     }
-    return successRes(saved);
+    const enriched = await this.enrichElons([saved]);
+    return successRes(enriched[0]);
+  }
+
+  override async findAll(): Promise<ISuccess<ElonEntity[]>> {
+    const data = await this.repo.find({
+      relations: {
+        category: true,
+        supCategory: true,
+        group: true,
+        comment: true,
+      } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+    const enriched = await this.enrichElons(data);
+    return successRes(enriched);
+  }
+
+  override async findOneById(id: string): Promise<ISuccess<ElonEntity>> {
+    const elon = await this.repo.findOne({
+      where: { id } as any,
+      relations: {
+        category: true,
+        supCategory: true,
+        group: true,
+        comment: true,
+      } as any,
+    });
+    if (!elon) throw new NotFoundException('Not found');
+    const enriched = await this.enrichElons([elon]);
+    return successRes(enriched[0]);
   }
 
   override async delete(id: string): Promise<ISuccess<{ deleted: true }>> {
@@ -146,6 +178,25 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       return successRes({ deleted: true });
     });
+  }
+
+  async incrementAnswerCount(id: string): Promise<ISuccess<ElonEntity>> {
+    const elon = await this.repo.findOne({ where: { id } as any });
+    if (!elon) throw new NotFoundException('Elon Not found');
+
+    elon.answerCount += 1;
+    const saved = await this.repo.save(elon);
+    return successRes(saved);
+  }
+
+  async updateStatus(id: string, status: ElonStatus): Promise<ISuccess<ElonEntity>> {
+    const elon = await this.repo.findOne({ where: { id } as any });
+    if (!elon) throw new NotFoundException('Not found');
+
+    elon.status = status;
+    const saved = await this.repo.save(elon);
+    const enriched = await this.enrichElons([saved]);
+    return successRes(enriched[0]);
   }
 
   private async ensureRelationsExist(params: {
@@ -174,5 +225,55 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       const exists = await groupRepo.exist({ where: { id: params.groupId } });
       if (!exists) throw new NotFoundException('group not found');
     }
+  }
+
+  private async enrichElons(elons: ElonEntity[]): Promise<ElonEntity[]> {
+    if (!elons.length) return [];
+
+    const elonIds = elons.map((e) => e.id);
+    const photos = await this.photoRepo.find({
+      where: { elonId: In(elonIds) } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+
+    const photosByElon = new Map<string, PhotoEntity[]>();
+    for (const photo of photos) {
+      if (!photo.elonId) continue;
+      const list = photosByElon.get(photo.elonId) ?? [];
+      list.push(photo);
+      photosByElon.set(photo.elonId, list);
+    }
+
+    const commentIds = elons
+      .map((e) => e.commentId)
+      .filter((id): id is string => Boolean(id));
+
+    const messageCountByComment = new Map<string, number>();
+    if (commentIds.length) {
+      const rows = await this.commentRepo
+        .createQueryBuilder('c')
+        .leftJoin('c.messages', 'm')
+        .select('c.id', 'id')
+        .addSelect('COUNT(m.id)', 'messageCount')
+        .where('c.id IN (:...ids)', { ids: commentIds })
+        .groupBy('c.id')
+        .getRawMany<{ id: string; messageCount: string }>();
+
+      for (const row of rows) {
+        messageCountByComment.set(row.id, Number(row.messageCount));
+      }
+    }
+
+    for (const elon of elons as any[]) {
+      elon.photos = photosByElon.get(elon.id) ?? [];
+      if (elon.comment?.id) {
+        elon.comment = {
+          ...elon.comment,
+          messageCount: messageCountByComment.get(elon.comment.id) ?? 0,
+        };
+      }
+    }
+
+    return elons;
   }
 }

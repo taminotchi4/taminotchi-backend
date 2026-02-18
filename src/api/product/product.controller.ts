@@ -56,7 +56,7 @@ export class ProductController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'product', allowed: 'image', maxSizeMb: 5 }),
+      buildMulterOptions({ folder: 'product', allowed: 'image', maxSizeMb: 8 }),
     ),
   )
   create(
@@ -112,7 +112,7 @@ export class ProductController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'product', allowed: 'image', maxSizeMb: 5 }),
+      buildMulterOptions({ folder: 'product', allowed: 'image', maxSizeMb: 8 }),
     ),
   )
   update(

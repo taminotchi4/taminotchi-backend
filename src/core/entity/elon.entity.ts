@@ -38,6 +38,9 @@ export class ElonEntity extends BaseEntity {
     @Column({ type: 'enum', enum: ElonStatus, default: ElonStatus.NEGOTIATION, })
     status: ElonStatus;
 
+    @Column({ type: 'int', default: 0 })
+    answerCount: number;
+
     @Index()
     @Column({ type: 'uuid', nullable: true })
     groupId: string | null;

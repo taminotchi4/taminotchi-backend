@@ -19,6 +19,7 @@ import { RequestMarketOtpDto } from './dto/request-otp.dto';
 import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
 import { AdressEntity } from 'src/core/entity/adress.entity';
+import { ProductEntity } from 'src/core/entity/product.entity';
 
 @Injectable()
 export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto, MarketEntity> {
@@ -27,6 +28,8 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     protected readonly marketRepo: Repository<MarketEntity>,
     @InjectRepository(AdressEntity)
     private readonly adressRepo: Repository<AdressEntity>,
+    @InjectRepository(ProductEntity)
+    private readonly productRepo: Repository<ProductEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
@@ -234,6 +237,20 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async me(marketId: string) {
     return this.findOneById(marketId);
+  }
+
+  async myProducts(marketId: string): Promise<ISuccess<ProductEntity[]>> {
+    const data = await this.productRepo.find({
+      where: { marketId } as any,
+      relations: {
+        photos: true,
+        comment: true,
+        category: true,
+        supCategory: true,
+      } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+    return successRes(data);
   }
 
   async updateMe(marketId: string, dto: UpdateMarketDto) {

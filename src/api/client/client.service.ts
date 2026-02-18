@@ -18,12 +18,15 @@ import { ClientLoginDto } from './dto/client-login.dto';
 import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { ElonEntity } from 'src/core/entity/elon.entity';
 
 @Injectable()
 export class ClientService extends BaseService<CreateClientDto, UpdateClientDto, ClientEntity> {
   constructor(
     @InjectRepository(ClientEntity)
     protected readonly clientRepo: Repository<ClientEntity>,
+    @InjectRepository(ElonEntity)
+    private readonly elonRepo: Repository<ElonEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
@@ -190,6 +193,21 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async me(clientId: string) {
     return this.findOneById(clientId);
+  }
+
+  async myElons(clientId: string): Promise<ISuccess<ElonEntity[]>> {
+    const data = await this.elonRepo.find({
+      where: { clientId } as any,
+      relations: {
+        photos: true,
+        comment: true,
+        category: true,
+        supCategory: true,
+        group: true,
+      } as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+    return successRes(data);
   }
 
   async updateMe(clientId: string, dto: UpdateClientDto) {

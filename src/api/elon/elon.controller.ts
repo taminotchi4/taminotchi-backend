@@ -17,6 +17,7 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { ElonService } from './elon.service';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
+import { UpdateElonStatusDto } from './dto/update-elon-status.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
@@ -56,7 +57,7 @@ export class ElonController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 5 }),
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 8 }),
     ),
   )
   create(
@@ -112,7 +113,7 @@ export class ElonController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 5 }),
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 8 }),
     ),
   )
   update(
@@ -126,6 +127,25 @@ export class ElonController {
       updateElonDto,
       photos.map((p) => toPublicPath('elon', p.filename)),
     );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT, UserRole.MARKET, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Patch(':id/answer-count')
+  incrementAnswerCount(@Param('id', ParseUUIDPipe) id: string) {
+    return this.elonService.incrementAnswerCount(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateElonStatusDto,
+  ) {
+    return this.elonService.updateStatus(id, dto.status);
   }
 
   @ApiBearerAuth()

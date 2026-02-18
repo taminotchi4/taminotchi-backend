@@ -6,9 +6,10 @@ import { MarketEntity } from 'src/core/entity/market.entity';
 import { AuthCommonModule } from 'src/common/auth/auth-common.module';
 import { CryptoService } from 'src/infrastructure/crypto/crypto.service';
 import { AdressEntity } from 'src/core/entity/adress.entity';
+import { ProductEntity } from 'src/core/entity/product.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MarketEntity, AdressEntity]), AuthCommonModule],
+  imports: [TypeOrmModule.forFeature([MarketEntity, AdressEntity, ProductEntity]), AuthCommonModule],
   controllers: [MarketController],
   providers: [MarketService, CryptoService],
   exports: [MarketService],

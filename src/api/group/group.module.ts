@@ -10,6 +10,7 @@ import { GroupEntity } from 'src/core/entity/group.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MessageEntity } from 'src/core/entity/message.entity';
       SupCategoryEntity,
       MessageEntity,
     ]),
+    NotificationModule,
   ],
   controllers: [GroupController],
   providers: [GroupService, GroupChatGateway, GroupChatService],

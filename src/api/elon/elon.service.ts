@@ -13,6 +13,9 @@ import { GroupEntity } from 'src/core/entity/group.entity';
 import { ElonStatus } from 'src/common/enum/index.enum';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationGateway } from '../notification/notification.gateway';
+import { NotificationType, NotificationRefType } from 'src/common/enum/index.enum';
 
 @Injectable()
 export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonEntity> {
@@ -29,6 +32,9 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     private readonly supCategoryRepo: Repository<SupCategoryEntity>,
     @InjectRepository(GroupEntity)
     private readonly groupRepo: Repository<GroupEntity>,
+
+    private readonly notifService: NotificationService,
+    private readonly notifGateway: NotificationGateway,
   ) {
     super(elonRepo);
   }
@@ -105,6 +111,36 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         );
       }
       const enriched = await this.enrichElons([finalElon]);
+
+      // ── Transaction tashqarida notification yuboramiz ──
+      // (groups ManyToMany ga bog'langan bo'lsa)
+      if (savedElon.groups?.length) {
+        setImmediate(async () => {
+          for (const group of savedElon.groups) {
+            // Guruh a'zolarini olish
+            const members = await this.groupRepo
+              .createQueryBuilder('g')
+              .innerJoin('g.markets', 'm')
+              .select('m.id', 'id')
+              .where('g.id = :gId', { gId: group.id })
+              .getRawMany<{ id: string }>();
+
+            await Promise.all(
+              members.map(async ({ id: memberId }) => {
+                const notif = await this.notifService.create({
+                  userId: memberId,
+                  type: NotificationType.ELON_COMMENT,
+                  referenceId: finalElon.id,
+                  referenceType: NotificationRefType.GROUP,
+                  preview: finalElon.text?.slice(0, 100) ?? null,
+                });
+                this.notifGateway.pushToUser(memberId, notif);
+              }),
+            );
+          }
+        });
+      }
+
       return successRes(enriched[0], 201);
     });
   }

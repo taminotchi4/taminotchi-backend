@@ -8,6 +8,7 @@ import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { GroupEntity } from 'src/core/entity/group.entity';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -19,9 +20,11 @@ import { GroupEntity } from 'src/core/entity/group.entity';
       SupCategoryEntity,
       GroupEntity,
     ]),
+    NotificationModule,
   ],
   controllers: [ElonController],
   providers: [ElonService],
   exports: [ElonService],
 })
-export class ElonModule {}
+export class ElonModule { }
+

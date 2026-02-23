@@ -32,6 +32,8 @@ import { SupCategoryModule } from './api/sup-category/sup-category.module';
 import { LanguageMiddleware } from './common/middleware/language.middleware';
 import { GroupModule } from './api/group/group.module';
 import { MessageModule } from './api/message/message.module';
+import { PrivateChatModule } from './api/private-chat/private-chat.module';
+import { NotificationModule } from './api/notification/notification.module';
 
 @Module({
   imports: [
@@ -104,6 +106,8 @@ import { MessageModule } from './api/message/message.module';
     SupCategoryModule,
     GroupModule,
     MessageModule,
+    PrivateChatModule,
+    NotificationModule,
   ],
   providers: [LanguageMiddleware],
 })

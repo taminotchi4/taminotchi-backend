@@ -33,3 +33,15 @@ export enum LanguageType {
     UZ = "uz",
     RU = "ru",
 }
+
+export enum NotificationType {
+    NEW_MESSAGE = 'new_message',   // yangi xabar keldi
+    GROUP_JOIN = 'group_join',    // guruhga a'zo qo'shildi
+    ELON_COMMENT = 'elon_comment',  // eloningizga komment yozildi
+}
+
+export enum NotificationRefType {
+    GROUP = 'group',
+    PRIVATE_CHAT = 'private_chat',
+    COMMENT = 'comment',
+}

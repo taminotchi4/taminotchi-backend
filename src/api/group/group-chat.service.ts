@@ -73,6 +73,19 @@ export class GroupChatService {
     }
 
     // ─────────────────────────────────────────────────
+    // Guruh a'zolari IDlari (notification uchun)
+    // ─────────────────────────────────────────────────
+    async getGroupMemberIds(groupId: string): Promise<string[]> {
+        const rows = await this.groupRepo
+            .createQueryBuilder('g')
+            .innerJoin('g.markets', 'm')
+            .select('m.id', 'id')
+            .where('g.id = :groupId', { groupId })
+            .getRawMany<{ id: string }>();
+        return rows.map((r) => r.id);
+    }
+
+    // ─────────────────────────────────────────────────
     // Xabarni DB ga saqlash (MessageEntity, scope: group)
     // ─────────────────────────────────────────────────
     async saveMessage(

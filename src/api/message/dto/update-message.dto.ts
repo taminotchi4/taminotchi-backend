@@ -1,4 +1,10 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateMessageDto } from './create-message.dto';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class UpdateMessageDto extends PartialType(CreateMessageDto) {}
+export class UpdateMessageDto {
+    @ApiPropertyOptional({ example: 'Yangilangan xabar matni' })
+    @IsString()
+    @IsOptional()
+    @MaxLength(4000)
+    text: string;
+}

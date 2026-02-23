@@ -10,53 +10,51 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-import { GroupChatService } from './group-chat.service';
-import { SendGroupMessageDto } from './dto/send-group-message.dto';
-import { NotificationService } from '../notification/notification.service';
-import { NotificationGateway } from '../notification/notification.gateway';
-import { NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
+import { CommentChatService } from './comment-chat.service';
+import { SendCommentMessageDto } from './dto/send-comment-message.dto';
 
 /**
- * GROUP CHAT GATEWAY
- * Namespace: /group-chat
+ * COMMENT CHAT GATEWAY
+ * Namespace: /comment-chat
  *
  * ─── Room strategiyasi ────────────────────────────
- *   "group:{groupId}"
+ *   "comment:{commentId}"
  *
  * ─── Client → Server eventlar ────────────────────
- *   join_group    { groupId }
- *   leave_group   { groupId }
- *   send_message  { groupId, type, text?, mediaPath?, replyToId? }
- *   typing        { groupId }
- *   stop_typing   { groupId }
- *   load_history  { groupId, page?, limit? }
+ *   join_comment   { commentId }
+ *   leave_comment  { commentId }
+ *   send_message   { commentId, type, text?, mediaPath?, replyToId? }
+ *   typing         { commentId }
+ *   stop_typing    { commentId }
+ *   load_history   { commentId, page?, limit? }
  *
  * ─── Server → Client eventlar ────────────────────
- *   joined        { groupId }
- *   left          { groupId }
- *   new_message   { ...MessageEntity }
- *   history       { data[], total, page, limit }
- *   typing        { groupId, userId, senderType }
- *   stop_typing   { groupId, userId }
- *   error         { message }
+ *   joined         { commentId }
+ *   left           { commentId }
+ *   new_message    { ...MessageEntity }
+ *   history        { data[], total, page, limit }
+ *   typing         { commentId, userId, senderType }
+ *   stop_typing    { commentId, userId }
+ *   error          { message }
+ *
+ * Kimlar ulanishi mumkin?
+ *   Client (USER) va Market (MARKET) — hech qanday a'zolik tekshiruvi yo'q,
+ *   comment ochiq bo'lsa istalgan autentifikatsiya qilingan foydalanuvchi
+ *   yoza oladi.
  */
 @WebSocketGateway({
-    namespace: '/group-chat',
+    namespace: '/comment-chat',
     cors: { origin: '*', credentials: true },
     transports: ['websocket', 'polling'],
 })
-export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
 
-    constructor(
-        private readonly groupChatService: GroupChatService,
-        private readonly notifService: NotificationService,
-        private readonly notifGateway: NotificationGateway,
-    ) { }
+    constructor(private readonly commentChatService: CommentChatService) { }
 
     // ─────────────────────────────────────────────────
-    // Ulanish: JWT tekshiriladi, barcha guruhlarga join
+    // Ulanish: JWT tekshiriladi
     // ─────────────────────────────────────────────────
     async handleConnection(client: Socket) {
         try {
@@ -66,16 +64,10 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
                 return;
             }
 
-            const user = await this.groupChatService.verifyToken(token);
-            client.data.user = user;  // barcha handlerlarda client.data.user ishlatiladi
+            const user = await this.commentChatService.verifyToken(token);
+            client.data.user = user;
 
-            // A'zo guruhlarni avtomatik room'larga qo'shamiz
-            const groupIds = await this.groupChatService.getUserGroupIds(user.id, user.role);
-            for (const gid of groupIds) {
-                await client.join(`group:${gid}`);
-            }
-
-            console.log(`[GroupChat] +connect  ${user.id} (${user.role}) | rooms: ${groupIds.length}`);
+            console.log(`[CommentChat] +connect  ${user.id} (${user.role})`);
         } catch {
             this.reject(client, 'Invalid or expired token');
         }
@@ -83,39 +75,34 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
 
     handleDisconnect(client: Socket) {
         const user = client.data?.user;
-        console.log(`[GroupChat] -disconnect ${user?.id ?? client.id}`);
+        console.log(`[CommentChat] -disconnect ${user?.id ?? client.id}`);
     }
 
     // ─────────────────────────────────────────────────
-    // join_group — qo'shimcha guruhga qo'shilish
-    // (connect da avtomatik qo'shiladi, bu yangi guruh
-    //  qo'shilganda yoki qayta kirish kerak bo'lganda)
+    // join_comment — comment room ga qo'shilish
     // ─────────────────────────────────────────────────
-    @SubscribeMessage('join_group')
-    async handleJoinGroup(
+    @SubscribeMessage('join_comment')
+    async handleJoinComment(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { groupId: string },
+        @MessageBody() data: { commentId: string },
     ) {
-        const user = this.getUser(client);
-        const { groupId } = data;
+        // Comment mavjudligini tekshiramiz
+        await this.commentChatService.getComment(data.commentId);
 
-        const isMember = await this.groupChatService.isMember(groupId, user.id, user.role);
-        if (!isMember) throw new WsException('You are not a member of this group');
-
-        await client.join(`group:${groupId}`);
-        client.emit('joined', { groupId });
+        await client.join(`comment:${data.commentId}`);
+        client.emit('joined', { commentId: data.commentId });
     }
 
     // ─────────────────────────────────────────────────
-    // leave_group — room'dan chiqish
+    // leave_comment
     // ─────────────────────────────────────────────────
-    @SubscribeMessage('leave_group')
-    async handleLeaveGroup(
+    @SubscribeMessage('leave_comment')
+    async handleLeaveComment(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { groupId: string },
+        @MessageBody() data: { commentId: string },
     ) {
-        await client.leave(`group:${data.groupId}`);
-        client.emit('left', { groupId: data.groupId });
+        await client.leave(`comment:${data.commentId}`);
+        client.emit('left', { commentId: data.commentId });
     }
 
     // ─────────────────────────────────────────────────
@@ -124,38 +111,14 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
     @SubscribeMessage('send_message')
     async handleSendMessage(
         @ConnectedSocket() client: Socket,
-        @MessageBody() dto: SendGroupMessageDto,
+        @MessageBody() dto: SendCommentMessageDto,
     ) {
         const user = this.getUser(client);
 
-        const isMember = await this.groupChatService.isMember(dto.groupId, user.id, user.role);
-        if (!isMember) throw new WsException('You are not a member of this group');
+        const message = await this.commentChatService.saveMessage(dto, user.id, user.role);
 
-        const message = await this.groupChatService.saveMessage(dto, user.id, user.role);
-
-        // Room dagi HAMMA ga broadcast (o'zi ham oladi)
-        this.server.to(`group:${dto.groupId}`).emit('new_message', message);
-
-        // ── Notification: yuboruvchidan boshqa barcha a'zolarga ──
-        const memberIds = await this.groupChatService.getGroupMemberIds(dto.groupId);
-        const preview = message.text ?? (message.type === 'image' ? '📷 Rasm' : '🎵 Audio');
-
-        await Promise.all(
-            memberIds
-                .filter((id) => id !== user.id)  // o'ziga yubormaymiz
-                .map(async (memberId) => {
-                    const notif = await this.notifService.create({
-                        userId: memberId,
-                        type: NotificationType.NEW_MESSAGE,
-                        senderId: user.id,
-                        senderType: user.role as any,
-                        referenceId: dto.groupId,
-                        referenceType: NotificationRefType.GROUP,
-                        preview,
-                    });
-                    this.notifGateway.pushToUser(memberId, notif);
-                }),
-        );
+        // Room dagi hamma ga broadcast (o'zi ham oladi)
+        this.server.to(`comment:${dto.commentId}`).emit('new_message', message);
     }
 
     // ─────────────────────────────────────────────────
@@ -164,12 +127,11 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
     @SubscribeMessage('typing')
     handleTyping(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { groupId: string },
+        @MessageBody() data: { commentId: string },
     ) {
         const user = this.getUser(client);
-        // client.to() — o'zidan boshqa hamma
-        client.to(`group:${data.groupId}`).emit('typing', {
-            groupId: data.groupId,
+        client.to(`comment:${data.commentId}`).emit('typing', {
+            commentId: data.commentId,
             userId: user.id,
             senderType: user.role,
         });
@@ -181,11 +143,11 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
     @SubscribeMessage('stop_typing')
     handleStopTyping(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { groupId: string },
+        @MessageBody() data: { commentId: string },
     ) {
         const user = this.getUser(client);
-        client.to(`group:${data.groupId}`).emit('stop_typing', {
-            groupId: data.groupId,
+        client.to(`comment:${data.commentId}`).emit('stop_typing', {
+            commentId: data.commentId,
             userId: user.id,
         });
     }
@@ -196,20 +158,17 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
     @SubscribeMessage('load_history')
     async handleLoadHistory(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { groupId: string; page?: number; limit?: number },
+        @MessageBody() data: { commentId: string; page?: number; limit?: number },
     ) {
-        const user = this.getUser(client);
+        // Comment mavjudligini tekshiramiz
+        await this.commentChatService.getComment(data.commentId);
 
-        const isMember = await this.groupChatService.isMember(data.groupId, user.id, user.role);
-        if (!isMember) throw new WsException('You are not a member of this group');
-
-        const history = await this.groupChatService.getHistory(
-            data.groupId,
+        const history = await this.commentChatService.getHistory(
+            data.commentId,
             data.page ?? 1,
             data.limit ?? 30,
         );
 
-        // Faqat so'ragan clientga qaytaramiz
         client.emit('history', history);
     }
 
@@ -217,14 +176,12 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
     // Private yordamchi metodlar
     // ─────────────────────────────────────────────────
 
-    /** Har bir handlerda autentifikatsiya qilingan userni olish */
     private getUser(client: Socket) {
         const user = client.data?.user;
         if (!user) throw new WsException('Unauthorized');
         return user as { id: string; role: string };
     }
 
-    /** Token yechib olish: handshake.auth.token | Authorization header */
     private extractToken(client: Socket): string | null {
         const authToken = client.handshake.auth?.token as string | undefined;
         if (authToken) return authToken;
@@ -235,7 +192,6 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         return null;
     }
 
-    /** Xato bilan disconnect */
     private reject(client: Socket, message: string) {
         client.emit('error', { message });
         client.disconnect();

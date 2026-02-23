@@ -7,6 +7,7 @@ import {
     IsPhoneNumber,
     IsString,
     IsUUID,
+    Matches,
     MinLength,
     IsStrongPassword,
 } from 'class-validator';
@@ -16,15 +17,25 @@ export class CreateMarketDto {
     @ApiProperty({ example: 'Tech Market' })
     @IsString()
     @IsNotEmpty()
+    @MinLength(3)
     name: string;
 
     @ApiProperty({ example: '+998901234567' })
     @IsPhoneNumber('UZ')
     phoneNumber: string;
 
-    @ApiPropertyOptional({ example: 'tech_market' })
+    @ApiPropertyOptional({
+        example: 'tech_market',
+        description:
+            'Kamida 3 belgi. Faqat harf, raqam va _. Harf bilan boshlanishi va tugashi shart. _ boshi/oxirida bo\'lmaydi.',
+    })
     @IsOptional()
     @IsString()
+    @Matches(/^[a-zA-Z][a-zA-Z0-9_]+[a-zA-Z0-9]$/, {
+        message:
+            'username kamida 3 belgi, harf bilan boshlansin, harf/raqam bilan tugasin, faqat harf/raqam/_ ishlatilsin',
+    })
+    @MinLength(3)
     username?: string | null;
 
     @ApiProperty({ example: 'Password123' })

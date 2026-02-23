@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index, OneToMany, ManyToMany } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from './base.entity';
 import { AdressEntity } from './adress.entity';
@@ -45,7 +45,8 @@ export class MarketEntity extends BaseEntity {
     @OneToMany(() => ProductEntity, (p) => p.market)
     products: ProductEntity[];
 
-    @OneToMany(() => GroupEntity, (g) => g.market)
+    // ✅ ManyToMany: market ko'p guruhda bo'la oladi
+    @ManyToMany(() => GroupEntity, (g) => g.markets)
     groups: GroupEntity[];
 
     @OneToMany(() => PrivateChatEntity, (pc) => pc.market)

@@ -45,14 +45,6 @@ export class CreateElonDto {
     })
     price?: string | null;
 
-    @ApiPropertyOptional({ example: 'c0ffee00-1111-2222-3333-444455556666' })
-    @Transform(({ value }) =>
-        typeof value === 'string' && value.trim() === '' ? undefined : value,
-    )
-    @IsOptional()
-    @IsUUID()
-    groupId?: string | null;
-
     @Allow()
     photo?: any;
 }

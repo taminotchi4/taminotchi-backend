@@ -6,11 +6,12 @@ import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { ProductEntity } from 'src/core/entity/product.entity';
 import { ElonEntity } from 'src/core/entity/elon.entity';
+import { GroupEntity } from 'src/core/entity/group.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CategoryEntity, SupCategoryEntity, ProductEntity, ElonEntity])],
+  imports: [TypeOrmModule.forFeature([CategoryEntity, SupCategoryEntity, ProductEntity, ElonEntity, GroupEntity])],
   controllers: [CategoryController],
   providers: [CategoryService],
   exports: [CategoryService],
 })
-export class CategoryModule {}
+export class CategoryModule { }

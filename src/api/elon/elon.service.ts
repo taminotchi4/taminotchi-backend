@@ -49,10 +49,8 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       await this.ensureRelationsExist({
         categoryId: dto.categoryId,
         supCategoryId: dto.supCategoryId,
-        groupId: dto.groupId,
         categoryRepo,
         supCategoryRepo,
-        groupRepo,
       });
 
       const elon = eRepo.create({
@@ -62,11 +60,28 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         ...(dto.supCategoryId ? { supCategoryId: dto.supCategoryId } : {}),
         clientId,
         price: dto.price ?? null,
-        groupId: dto.groupId ?? null,
         commentId: null,
       });
 
       const savedElon = await eRepo.save(elon);
+
+      // Elon yaratilganda categorysi va supCategorysi ga tegishli
+      // guruhlarni avtomatik ManyToMany bog'laymiz
+      const whereConditions: object[] = [];
+      if (savedElon.categoryId) {
+        whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: null });
+      }
+      if (savedElon.supCategoryId) {
+        whereConditions.push({ supCategoryId: savedElon.supCategoryId });
+      }
+
+      if (whereConditions.length) {
+        const autoGroups = await groupRepo.find({ where: whereConditions as any });
+        if (autoGroups.length) {
+          savedElon.groups = autoGroups;
+          await eRepo.save(savedElon);
+        }
+      }
 
       const comment = cRepo.create({
         scope: CommentScope.ELON,
@@ -105,7 +120,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     await this.ensureRelationsExist({
       categoryId: dto.categoryId,
       supCategoryId: dto.supCategoryId,
-      groupId: dto.groupId,
     });
 
     if (dto.text !== undefined) elon.text = dto.text.trim();
@@ -113,7 +127,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (dto.categoryId !== undefined) elon.categoryId = dto.categoryId;
     if (dto.supCategoryId !== undefined) elon.supCategoryId = dto.supCategoryId;
     if (dto.price !== undefined) elon.price = dto.price ?? null;
-    if (dto.groupId !== undefined) elon.groupId = dto.groupId ?? null;
     if (dto.status !== undefined) elon.status = dto.status;
 
     const saved = await this.repo.save(elon);
@@ -137,7 +150,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       relations: {
         category: true,
         supCategory: true,
-        group: true,
+        groups: true,
         comment: true,
       } as any,
       order: { createdAt: 'DESC' } as any,
@@ -152,7 +165,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       relations: {
         category: true,
         supCategory: true,
-        group: true,
+        groups: true,
         comment: true,
       } as any,
     });
@@ -202,14 +215,11 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
   private async ensureRelationsExist(params: {
     categoryId?: string | null;
     supCategoryId?: string | null;
-    groupId?: string | null;
     categoryRepo?: Repository<CategoryEntity>;
     supCategoryRepo?: Repository<SupCategoryEntity>;
-    groupRepo?: Repository<GroupEntity>;
   }): Promise<void> {
     const categoryRepo = params.categoryRepo ?? this.categoryRepo;
     const supCategoryRepo = params.supCategoryRepo ?? this.supCategoryRepo;
-    const groupRepo = params.groupRepo ?? this.groupRepo;
 
     if (params.categoryId) {
       const exists = await categoryRepo.exist({ where: { id: params.categoryId } });
@@ -219,11 +229,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (params.supCategoryId) {
       const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId } });
       if (!exists) throw new NotFoundException('supcategory not found');
-    }
-
-    if (params.groupId) {
-      const exists = await groupRepo.exist({ where: { id: params.groupId } });
-      if (!exists) throw new NotFoundException('group not found');
     }
   }
 

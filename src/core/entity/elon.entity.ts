@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, Index, OneToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToMany, ManyToOne, Index, OneToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { CategoryEntity } from './category.entity';
 import { GroupEntity } from './group.entity';
@@ -41,13 +41,9 @@ export class ElonEntity extends BaseEntity {
     @Column({ type: 'int', default: 0 })
     answerCount: number;
 
-    @Index()
-    @Column({ type: 'uuid', nullable: true })
-    groupId: string | null;
-
-    @ManyToOne(() => GroupEntity, (g) => g.elons, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'groupId' })
-    group: GroupEntity | null;
+    // ── ManyToMany: Elon bir nechta guruhga tegishli bo'lishi mumkin ─
+    @ManyToMany(() => GroupEntity, (g) => g.elons)
+    groups: GroupEntity[];
 
     @OneToMany(() => PhotoEntity, (p) => p.elon)
     photos: PhotoEntity[];

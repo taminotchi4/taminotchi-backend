@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
@@ -27,6 +27,7 @@ export class SupCategoryService {
     private readonly groupRepo: Repository<GroupEntity>,
     @InjectRepository(ElonEntity)
     private readonly elonRepo: Repository<ElonEntity>,
+    private readonly dataSource: DataSource,
   ) { }
 
   private async ensureUniqueNameUz(nameUz: string, ignoreId?: string) {
@@ -94,17 +95,31 @@ export class SupCategoryService {
       await this.ensureUniqueNameUz(nameUz);
       await this.ensureCategoryExists(dto.categoryId);
 
-      const supCategory = this.supCategoryRepo.create({
-        nameUz,
-        nameRu: dto.nameRu ?? null,
-        hintText: dto.hintText ?? null,
-        ...(dto.withAdress !== undefined ? { withAdress: dto.withAdress } : {}),
-        categoryId: dto.categoryId,
-        photoUrl: files?.photoUrl ?? null,
-        iconUrl: files?.iconUrl ?? null,
+      // Transaction: supCategory + group bir vaqtda yaratiladi
+      const saved = await this.dataSource.transaction(async (manager) => {
+        const supCategory = manager.create(SupCategoryEntity, {
+          nameUz,
+          nameRu: dto.nameRu ?? null,
+          hintText: dto.hintText ?? null,
+          ...(dto.withAdress !== undefined ? { withAdress: dto.withAdress } : {}),
+          categoryId: dto.categoryId,
+          photoUrl: files?.photoUrl ?? null,
+          iconUrl: files?.iconUrl ?? null,
+        });
+        const savedSC = await manager.save(SupCategoryEntity, supCategory);
+
+        // SupCategory uchun avtomatik group yaratish
+        const group = manager.create(GroupEntity, {
+          name: nameUz,                    // supCategory nomi bilan bir xil
+          categoryId: dto.categoryId,      // tegishli category
+          supCategoryId: savedSC.id,
+          markets: [],
+        });
+        await manager.save(GroupEntity, group);
+
+        return savedSC;
       });
 
-      const saved = await this.supCategoryRepo.save(supCategory);
       return successRes(this.withUrls(saved), 201);
     } catch (err) {
       await this.cleanupUploadedFiles([files?.photoUrl, files?.iconUrl]);

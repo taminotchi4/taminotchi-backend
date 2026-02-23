@@ -2,16 +2,18 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { ProductEntity } from 'src/core/entity/product.entity';
 import { ElonEntity } from 'src/core/entity/elon.entity';
+import { GroupEntity } from 'src/core/entity/group.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
 import { config } from 'src/config';
+import { UserRole } from 'src/common/enum/index.enum';
 
 @Injectable()
 export class CategoryService {
@@ -24,6 +26,7 @@ export class CategoryService {
     private readonly productRepo: Repository<ProductEntity>,
     @InjectRepository(ElonEntity)
     private readonly elonRepo: Repository<ElonEntity>,
+    private readonly dataSource: DataSource,
   ) { }
 
   private async ensureUniqueNameUz(nameUz: string, ignoreId?: string) {
@@ -83,16 +86,30 @@ export class CategoryService {
     try {
       await this.ensureUniqueNameUz(nameUz);
 
-      const category = this.categoryRepo.create({
-        nameUz,
-        nameRu: dto.nameRu ?? null,
-        hintText: dto.hintText ?? null,
-        ...(dto.withAdress !== undefined ? { withAdress: dto.withAdress } : {}),
-        photoUrl: files?.photoUrl ?? null,
-        iconUrl: files?.iconUrl ?? null,
+      // Transaction: category + group bir vaqtda yaratiladi
+      const saved = await this.dataSource.transaction(async (manager) => {
+        const category = manager.create(CategoryEntity, {
+          nameUz,
+          nameRu: dto.nameRu ?? null,
+          hintText: dto.hintText ?? null,
+          ...(dto.withAdress !== undefined ? { withAdress: dto.withAdress } : {}),
+          photoUrl: files?.photoUrl ?? null,
+          iconUrl: files?.iconUrl ?? null,
+        });
+        const savedCategory = await manager.save(CategoryEntity, category);
+
+        // Category uchun avtomatik group yaratish
+        const group = manager.create(GroupEntity, {
+          name: nameUz,               // category nomi bilan bir xil
+          categoryId: savedCategory.id,
+          supCategoryId: null,
+          markets: [],
+        });
+        await manager.save(GroupEntity, group);
+
+        return savedCategory;
       });
 
-      const saved = await this.categoryRepo.save(category);
       return successRes(this.withUrls(saved), 201);
     } catch (err) {
       await this.cleanupUploadedFiles([files?.photoUrl, files?.iconUrl]);

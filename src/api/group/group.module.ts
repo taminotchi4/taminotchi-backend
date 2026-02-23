@@ -1,9 +1,27 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { GroupService } from './group.service';
 import { GroupController } from './group.controller';
+import { GroupChatGateway } from './group-chat.gateway';
+import { GroupChatService } from './group-chat.service';
+
+import { GroupEntity } from 'src/core/entity/group.entity';
+import { MarketEntity } from 'src/core/entity/market.entity';
+import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
+import { MessageEntity } from 'src/core/entity/message.entity';
 
 @Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      GroupEntity,
+      MarketEntity,
+      SupCategoryEntity,
+      MessageEntity,
+    ]),
+  ],
   controllers: [GroupController],
-  providers: [GroupService],
+  providers: [GroupService, GroupChatGateway, GroupChatService],
+  exports: [GroupService, GroupChatService],
 })
-export class GroupModule {}
+export class GroupModule { }

@@ -10,6 +10,7 @@ export class CreateCategoryDto {
     nameUz: string;
 
     @ApiPropertyOptional({ example: 'Автозапчасти' })
+    @Transform(({ value }) => (value === '' || value === null || value === undefined ? undefined : value))
     @IsOptional()
     @IsString()
     @MaxLength(100)

@@ -30,53 +30,98 @@ import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
 import { UserRole } from 'src/common/enum/index.enum';
 import { buildMulterOptions, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
+const AllRoles = [UserRole.MARKET, UserRole.ADMIN, UserRole.SUPERADMIN];
+
 @ApiTags('Group')
+@ApiBearerAuth()
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('group')
 export class GroupController {
   constructor(private readonly groupService: GroupService) { }
 
-  // ── PUBLIC (guard yo'q) ───────────────────────────
+  // ── 1. Statik GET routelar — :id dan OLDIN bo'lishi SHART ────────────────
 
-  @ApiOperation({ summary: 'Barcha guruhlar (membersCount bilan)' })
+  @ApiOperation({ summary: 'Barcha guruhlar (membersCount + isJoined)' })
+  @AccessRoles(...AllRoles)
   @Get()
   findAll(@Req() req: any) {
-    return this.groupService.findAllGroups(req?.lang);
-  }
-
-  @ApiOperation({ summary: 'Bitta guruh (membersCount bilan)' })
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.groupService.findOneGroup(id, req?.lang);
-  }
-
-  @ApiOperation({ summary: 'Guruh a\'zolari ro\'yxati' })
-  @Get(':id/members')
-  getMembers(@Param('id', ParseUUIDPipe) id: string) {
-    return this.groupService.getGroupMembers(id);
+    const marketId = req.user?.role === UserRole.MARKET ? req.user.id : undefined;
+    return this.groupService.findAllGroups(req?.lang, marketId);
   }
 
   @ApiOperation({
-    summary: 'CategoryId bo\'yicha guruhlar (category va uning supCategorylari guruhlarini qaytaradi)',
+    summary: 'CategoryId bo\'yicha guruhlar (isJoined bilan)',
   })
+  @AccessRoles(...AllRoles)
   @Get('by-category/:categoryId')
-  findByCategoryId(@Param('categoryId', ParseUUIDPipe) categoryId: string, @Req() req: any) {
-    return this.groupService.findByCategoryId(categoryId, req?.lang);
+  findByCategoryId(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Req() req: any,
+  ) {
+    const marketId = req.user?.role === UserRole.MARKET ? req.user.id : undefined;
+    return this.groupService.findByCategoryId(categoryId, req?.lang, marketId);
   }
 
-  // ── PROTECTED ────────────────────────────────────
-
-  @ApiOperation({ summary: 'Market: qo\'shilgan guruhlarim' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Market: join bo\'lgan guruhlarim' })
   @AccessRoles(UserRole.MARKET)
   @Get('me/groups')
   getMyGroups(@Req() req: any) {
     return this.groupService.getMyGroups(req.user.id, req?.lang);
   }
 
-  @ApiOperation({ summary: 'Guruhni yangilash (creator yoki admin)' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Market: join bo\'lgan kategoriyalarim' })
+  @AccessRoles(UserRole.MARKET)
+  @Get('me/join-categories')
+  getMyJoinedCategories(@Req() req: any) {
+    return this.groupService.getMyJoinedCategories(req.user.id, req?.lang);
+  }
+
+  @ApiOperation({ summary: 'Market: categoryId bo\'yicha join bo\'lgan guruhlarim' })
+  @AccessRoles(UserRole.MARKET)
+  @Get('me/join-by-category/:categoryId')
+  getMyJoinedGroupsByCategory(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Req() req: any,
+  ) {
+    return this.groupService.getMyJoinedGroupsByCategory(req.user.id, categoryId, req?.lang);
+  }
+
+  // ── 2. Dinamik GET routelar — :id ─────────────────────────────────────────
+
+  @ApiOperation({ summary: 'Bitta guruh (membersCount + isJoined)' })
+  @AccessRoles(...AllRoles)
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    const marketId = req.user?.role === UserRole.MARKET ? req.user.id : undefined;
+    return this.groupService.findOneGroup(id, req?.lang, marketId);
+  }
+
+  @ApiOperation({ summary: 'Guruh a\'zolari ro\'yxati' })
+  @AccessRoles(...AllRoles)
+  @Get(':id/members')
+  getMembers(@Param('id', ParseUUIDPipe) id: string) {
+    return this.groupService.getGroupMembers(id);
+  }
+
+  // ── 3. MARKET — join / leave ──────────────────────────────────────────────
+
+  @ApiOperation({ summary: 'Market: guruhga qo\'shilish' })
+  @AccessRoles(UserRole.MARKET)
+  @Post(':id/join')
+  join(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.groupService.joinGroup(id, req.user.id);
+  }
+
+  @ApiOperation({ summary: 'Market: guruhdan chiqish' })
+  @AccessRoles(UserRole.MARKET)
+  @Post(':id/leave')
+  leave(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.groupService.leaveGroup(id, req.user.id);
+  }
+
+  // ── 4. ADMIN/SUPERADMIN — CRUD ────────────────────────────────────────────
+
+  @ApiOperation({ summary: 'Guruhni yangilash (admin)' })
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @Patch(':id')
   @ApiConsumes('multipart/form-data')
@@ -108,36 +153,14 @@ export class GroupController {
     return this.groupService.updateGroup(id, dto, req.user.id, req.user.role, profilePhoto);
   }
 
-  @ApiOperation({ summary: 'Guruhni o\'chirish (creator yoki admin)' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Guruhni o\'chirish (admin)' })
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @Delete(':id')
   delete(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.groupService.deleteGroup(id, req.user.id, req.user.role);
   }
 
-  @ApiOperation({ summary: 'Market: guruhga qo\'shilish' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.MARKET)
-  @Post(':id/join')
-  join(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.groupService.joinGroup(id, req.user.id);
-  }
-
-  @ApiOperation({ summary: 'Market: guruhdan chiqish' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.MARKET)
-  @Post(':id/leave')
-  leave(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.groupService.leaveGroup(id, req.user.id);
-  }
-
-  @ApiOperation({ summary: 'A\'zoni chiqarish — kick (creator yoki admin)' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'A\'zoni chiqarish — kick (admin)' })
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @Delete(':id/members/:marketId')
   kick(

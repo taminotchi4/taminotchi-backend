@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { GroupEntity } from 'src/core/entity/group.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
+import { CategoryEntity } from 'src/core/entity/category.entity';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { successRes } from 'src/infrastructure/response/success.response';
@@ -31,6 +32,9 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
 
     @InjectRepository(SupCategoryEntity)
     private readonly supCategoryRepo: Repository<SupCategoryEntity>,
+
+    @InjectRepository(CategoryEntity)
+    private readonly categoryRepo: Repository<CategoryEntity>,
   ) {
     super(groupRepo);
   }
@@ -47,9 +51,43 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   }
 
   // ──────────────────────────────────────────────
-  // Guruhlar ro'yxati + membersCount
+  // marketId join bo'lgan group ID larini olish
+  // (2 ta query bilan N+1 ni oldini olamiz)
   // ──────────────────────────────────────────────
-  async findAllGroups(lang?: 'uz' | 'ru') {
+  private async loadJoinedIds(
+    marketId: string | undefined,
+    groupIds: string[],
+  ): Promise<Set<string>> {
+    if (!marketId || groupIds.length === 0) return new Set();
+
+    const rows = await this.groupRepo
+      .createQueryBuilder('g')
+      .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
+      .where('g.id IN (:...ids)', { ids: groupIds })
+      .select('g.id', 'gid')
+      .getRawMany();
+
+    return new Set(rows.map((r) => r.gid));
+  }
+
+  // ──────────────────────────────────────────────
+  // isJoined flag ni qo'shish
+  // ──────────────────────────────────────────────
+  private enrich(
+    groups: GroupEntity[],
+    joinedIds: Set<string>,
+    lang?: 'uz' | 'ru',
+  ) {
+    return groups.map((g) => ({
+      ...this.withName(g, lang),
+      isJoined: joinedIds.has(g.id),
+    }));
+  }
+
+  // ──────────────────────────────────────────────
+  // Guruhlar ro'yxati + membersCount + isJoined
+  // ──────────────────────────────────────────────
+  async findAllGroups(lang?: 'uz' | 'ru', marketId?: string) {
     const groups = await this.groupRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
@@ -57,15 +95,15 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
       .orderBy('g.createdAt', 'DESC')
       .getMany();
-    return successRes(groups.map((g) => this.withName(g, lang)));
+
+    const joinedIds = await this.loadJoinedIds(marketId, groups.map((g) => g.id));
+    return successRes(this.enrich(groups, joinedIds, lang));
   }
 
   // ──────────────────────────────────────────────
-  // CategoryId bo'yicha guruhlar:
-  //   1) Guruhning o'z categoryId = berilgan id
-  //   2) Guruhning supCategory.categoryId = berilgan id
+  // CategoryId bo'yicha guruhlar + isJoined
   // ──────────────────────────────────────────────
-  async findByCategoryId(categoryId: string, lang?: 'uz' | 'ru') {
+  async findByCategoryId(categoryId: string, lang?: 'uz' | 'ru', marketId?: string) {
     const groups = await this.groupRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
@@ -75,13 +113,15 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .orWhere('sc.categoryId = :categoryId', { categoryId })
       .orderBy('g.createdAt', 'DESC')
       .getMany();
-    return successRes(groups.map((g) => this.withName(g, lang)));
+
+    const joinedIds = await this.loadJoinedIds(marketId, groups.map((g) => g.id));
+    return successRes(this.enrich(groups, joinedIds, lang));
   }
 
   // ──────────────────────────────────────────────
-  // Bitta guruh + membersCount
+  // Bitta guruh + membersCount + isJoined
   // ──────────────────────────────────────────────
-  async findOneGroup(id: string, lang?: 'uz' | 'ru') {
+  async findOneGroup(id: string, lang?: 'uz' | 'ru', marketId?: string) {
     const group = await this.groupRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
@@ -91,7 +131,12 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .getOne();
 
     if (!group) throw new NotFoundException('Group not found');
-    return successRes(this.withName(group, lang));
+
+    const joinedIds = await this.loadJoinedIds(marketId, [group.id]);
+    return successRes({
+      ...this.withName(group, lang),
+      isJoined: joinedIds.has(group.id),
+    });
   }
 
   // ──────────────────────────────────────────────
@@ -110,6 +155,83 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   }
 
   // ──────────────────────────────────────────────
+  // Market join bo'lgan categorylar ro'yxati
+  // ──────────────────────────────────────────────
+  async getMyJoinedCategories(marketId: string, lang?: 'uz' | 'ru') {
+    // Market a'zo bo'lgan guruhlar + ularning kategoriylari
+    const joinedGroups = await this.groupRepo
+      .createQueryBuilder('g')
+      .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
+      .leftJoinAndSelect('g.category', 'cat')
+      .leftJoinAndSelect('g.supCategory', 'sc')
+      .select(['g.id', 'g.categoryId', 'g.supCategoryId', 'cat', 'sc.categoryId'])
+      .getMany();
+
+    // Unique categoryId larni yig'amiz
+    const categoryIds = new Set<string>();
+    for (const g of joinedGroups) {
+      if (g.categoryId) categoryIds.add(g.categoryId);
+      else if ((g.supCategory as any)?.categoryId) {
+        categoryIds.add((g.supCategory as any).categoryId);
+      }
+    }
+
+    if (categoryIds.size === 0) return successRes([]);
+
+    const categories = await this.categoryRepo.find({
+      where: [...categoryIds].map((id) => ({ id })) as any,
+      order: { createdAt: 'DESC' } as any,
+    });
+
+    const withName = categories.map((c) => ({
+      ...c,
+      name: lang === 'ru' ? (c.nameRu || c.nameUz) : c.nameUz,
+    }));
+
+    return successRes(withName);
+  }
+
+  // ──────────────────────────────────────────────
+  // MarketId + categoryId → faqat join bo'lgan guruhlar
+  // ──────────────────────────────────────────────
+  async getMyJoinedGroupsByCategory(marketId: string, categoryId: string, lang?: 'uz' | 'ru') {
+    const groups = await this.groupRepo
+      .createQueryBuilder('g')
+      .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
+      .leftJoinAndSelect('g.supCategory', 'sc')
+      .leftJoinAndSelect('g.category', 'cat')
+      .loadRelationCountAndMap('g.membersCount', 'g.markets')
+      .where('g.categoryId = :categoryId', { categoryId })
+      .orWhere('sc.categoryId = :categoryId', { categoryId })
+      .orderBy('g.createdAt', 'DESC')
+      .getMany();
+
+    return successRes(groups.map((g) => ({
+      ...this.withName(g, lang),
+      isJoined: true, // INNER JOIN orqali faqat joined guruhlar keladi
+    })));
+  }
+
+  // ──────────────────────────────────────────────
+  // Market qo'shilgan guruhlar ro'yxati
+  // ──────────────────────────────────────────────
+  async getMyGroups(marketId: string, lang?: 'uz' | 'ru') {
+    const groups = await this.groupRepo
+      .createQueryBuilder('g')
+      .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
+      .leftJoinAndSelect('g.supCategory', 'sc')
+      .leftJoinAndSelect('g.category', 'cat')
+      .loadRelationCountAndMap('g.membersCount', 'g.markets')
+      .orderBy('g.createdAt', 'DESC')
+      .getMany();
+
+    return successRes(groups.map((g) => ({
+      ...this.withName(g, lang),
+      isJoined: true,
+    })));
+  }
+
+  // ──────────────────────────────────────────────
   // Guruhni yangilash (har qanday admin)
   // ──────────────────────────────────────────────
   async updateGroup(
@@ -122,7 +244,6 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
     const group = await this.groupRepo.findOne({ where: { id } });
     if (!group) throw new NotFoundException('Group not found');
 
-    // Faqat Admin/Superadmin yangilay oladi
     if (requesterRole === UserRole.MARKET) {
       throw new ForbiddenException('Only admins can update groups');
     }
@@ -133,7 +254,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
 
     if (dto.nameUz !== undefined) {
       group.nameUz = dto.nameUz.trim();
-      group.name = group.nameUz;   // name = nameUz (backward compat)
+      group.name = group.nameUz;
     }
     if (dto.nameRu !== undefined) group.nameRu = dto.nameRu ?? null;
     if (dto.description !== undefined) group.description = dto.description ?? null;
@@ -201,20 +322,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   }
 
   // ──────────────────────────────────────────────
-  // Market qo'shilgan guruhlar ro'yxati
-  // ──────────────────────────────────────────────
-  async getMyGroups(marketId: string, lang?: 'uz' | 'ru') {
-    const market = await this.marketRepo.findOne({
-      where: { id: marketId },
-      relations: { groups: { supCategory: true, category: true } },
-    });
-    if (!market) throw new NotFoundException('Market not found');
-    return successRes(market.groups.map((g) => this.withName(g, lang)));
-  }
-
-  // ──────────────────────────────────────────────
-  // Guruhdan a'zoni chiqarish (kick)
-  // Faqat ADMIN/SUPERADMIN
+  // Guruhdan a'zoni chiqarish (kick) — faqat admin
   // ──────────────────────────────────────────────
   async kickMember(
     groupId: string,

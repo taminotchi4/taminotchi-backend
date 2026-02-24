@@ -190,18 +190,18 @@ export class SupCategoryService {
   }
 
   async remove(id: string): Promise<ISuccess<{ deleted: true }>> {
-    const exists = await this.supCategoryRepo.findOne({ where: { id } });
+    const exists = await this.supCategoryRepo.findOne({ where: { id } as any });
     if (!exists) throw new NotFoundException('Not found');
 
-    const [productCount, groupCount, elonCount] = await Promise.all([
+    const [productCount, elonCount] = await Promise.all([
       this.productRepo.count({ where: { supCategoryId: id } as any }),
-      this.groupRepo.count({ where: { supCategoryId: id } as any }),
       this.elonRepo.count({ where: { supCategoryId: id } as any }),
     ]);
 
-    if (productCount > 0 || groupCount > 0 || elonCount > 0) {
+    // Guruhlar onDelete: SET NULL — supCategoryId null ga o'rnatiladi, o'chirilmaydi
+    if (productCount > 0 || elonCount > 0) {
       throw new ConflictException(
-        'SupCategory has related records (products/groups/elons)',
+        'SupCategory has related records (products/elons)',
       );
     }
 

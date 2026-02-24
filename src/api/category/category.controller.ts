@@ -66,7 +66,7 @@ export class CategoryController {
         { name: 'photo', maxCount: 1 },
         { name: 'icon', maxCount: 1 },
       ],
-      buildMulterOptions({ folder: 'category', allowed: 'image', maxSizeMb: 3 }),
+      buildMulterOptions({ folder: 'category', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
   create(
@@ -107,7 +107,7 @@ export class CategoryController {
         { name: 'photo', maxCount: 1 },
         { name: 'icon', maxCount: 1 },
       ],
-      buildMulterOptions({ folder: 'category', allowed: 'image', maxSizeMb: 3 }),
+      buildMulterOptions({ folder: 'category', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
   update(

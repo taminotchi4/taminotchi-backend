@@ -100,7 +100,9 @@ export class CategoryService {
 
         // Category uchun avtomatik group yaratish
         const group = manager.create(GroupEntity, {
-          name: nameUz,               // category nomi bilan bir xil
+          name: nameUz,               // backward compat
+          nameUz: nameUz,             // i18n
+          nameRu: dto.nameRu ?? null, // i18n
           categoryId: savedCategory.id,
           supCategoryId: null,
           markets: [],

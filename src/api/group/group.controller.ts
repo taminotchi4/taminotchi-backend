@@ -39,20 +39,28 @@ export class GroupController {
 
   @ApiOperation({ summary: 'Barcha guruhlar (membersCount bilan)' })
   @Get()
-  findAll() {
-    return this.groupService.findAllGroups();
+  findAll(@Req() req: any) {
+    return this.groupService.findAllGroups(req?.lang);
   }
 
   @ApiOperation({ summary: 'Bitta guruh (membersCount bilan)' })
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.groupService.findOneGroup(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.groupService.findOneGroup(id, req?.lang);
   }
 
   @ApiOperation({ summary: 'Guruh a\'zolari ro\'yxati' })
   @Get(':id/members')
   getMembers(@Param('id', ParseUUIDPipe) id: string) {
     return this.groupService.getGroupMembers(id);
+  }
+
+  @ApiOperation({
+    summary: 'CategoryId bo\'yicha guruhlar (category va uning supCategorylari guruhlarini qaytaradi)',
+  })
+  @Get('by-category/:categoryId')
+  findByCategoryId(@Param('categoryId', ParseUUIDPipe) categoryId: string, @Req() req: any) {
+    return this.groupService.findByCategoryId(categoryId, req?.lang);
   }
 
   // ── PROTECTED ────────────────────────────────────
@@ -63,7 +71,7 @@ export class GroupController {
   @AccessRoles(UserRole.MARKET)
   @Get('me/groups')
   getMyGroups(@Req() req: any) {
-    return this.groupService.getMyGroups(req.user.id);
+    return this.groupService.getMyGroups(req.user.id, req?.lang);
   }
 
   @ApiOperation({ summary: 'Guruhni yangilash (creator yoki admin)' })
@@ -76,7 +84,8 @@ export class GroupController {
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string', example: 'Yangi nom' },
+        nameUz: { type: 'string', example: 'Yangi nom (UZ)' },
+        nameRu: { type: 'string', example: 'Новое название (RU)' },
         description: { type: 'string' },
         supCategoryId: { type: 'string', format: 'uuid' },
         profilePhoto: { type: 'string', format: 'binary' },

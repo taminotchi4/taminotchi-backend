@@ -20,6 +20,12 @@ export class GroupEntity extends BaseEntity {
     @Column({ type: 'varchar' })
     name: string;
 
+    @Column({ type: 'varchar', nullable: true })
+    nameUz: string | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    nameRu: string | null;
+
     @Column({ type: 'text', nullable: true })
     description: string | null;
 

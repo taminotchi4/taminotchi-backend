@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+    Allow,
     IsString,
     IsNotEmpty,
     IsOptional,
@@ -12,7 +13,13 @@ export class CreateGroupDto {
     @IsString()
     @IsNotEmpty()
     @MaxLength(100)
-    name: string;
+    nameUz: string;
+
+    @ApiPropertyOptional({ example: 'Торговцы электроникой' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(100)
+    nameRu?: string | null;
 
     @ApiPropertyOptional({ example: 'Elektronika sohasidagi guruh' })
     @IsOptional()
@@ -24,4 +31,13 @@ export class CreateGroupDto {
     @IsOptional()
     @IsUUID()
     supCategoryId?: string;
+
+    @ApiPropertyOptional({ example: 'uuid-of-category' })
+    @IsOptional()
+    @IsUUID()
+    categoryId?: string;
+
+    // multipart file field (to satisfy whitelist validation)
+    @Allow()
+    profilePhoto?: any;
 }

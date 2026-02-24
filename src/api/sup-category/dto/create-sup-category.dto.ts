@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Allow, IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateSupCategoryDto {
     @ApiProperty({ example: 'Smartfonlar' })
@@ -32,4 +32,11 @@ export class CreateSupCategoryDto {
     @ApiProperty({ example: 'b5b6f7d8-1111-2222-3333-444455556666' })
     @IsUUID()
     categoryId: string;
+
+    // multipart file fields (to satisfy whitelist validation)
+    @Allow()
+    photo?: any;
+
+    @Allow()
+    icon?: any;
 }

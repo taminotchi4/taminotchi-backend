@@ -11,11 +11,24 @@ export class UpdateGroupDto extends PartialType(CreateGroupDto) {
     @IsOptional()
     @IsString()
     @MaxLength(100)
-    name?: string;
+    nameUz?: string;
+
+    @ApiPropertyOptional({ example: 'Торговцы электроникой' })
+    @Transform(({ value }) => (value === '' || value === null || value === undefined ? undefined : value))
+    @IsOptional()
+    @IsString()
+    @MaxLength(100)
+    nameRu?: string;
 
     @ApiPropertyOptional({ example: 'uuid-of-sup-category' })
     @Transform(({ value }) => (value === '' || value === null || value === undefined ? undefined : value))
     @IsOptional()
     @IsUUID()
     supCategoryId?: string;
+
+    @ApiPropertyOptional({ example: 'uuid-of-category' })
+    @Transform(({ value }) => (value === '' || value === null || value === undefined ? undefined : value))
+    @IsOptional()
+    @IsUUID()
+    categoryId?: string;
 }

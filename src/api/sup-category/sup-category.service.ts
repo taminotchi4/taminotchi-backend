@@ -110,7 +110,9 @@ export class SupCategoryService {
 
         // SupCategory uchun avtomatik group yaratish
         const group = manager.create(GroupEntity, {
-          name: nameUz,                    // supCategory nomi bilan bir xil
+          name: nameUz,                    // backward compat
+          nameUz: nameUz,                  // i18n
+          nameRu: dto.nameRu ?? null,      // i18n
           categoryId: dto.categoryId,      // tegishli category
           supCategoryId: savedSC.id,
           markets: [],

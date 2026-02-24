@@ -36,9 +36,20 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   }
 
   // ──────────────────────────────────────────────
+  // Lang bo'yicha name fieldini qo'shamiz
+  // ──────────────────────────────────────────────
+  private withName<T extends { nameUz?: string | null; nameRu?: string | null }>(
+    item: T,
+    lang?: 'uz' | 'ru',
+  ) {
+    const name = lang === 'ru' ? (item.nameRu || item.nameUz || '') : (item.nameUz || '');
+    return { ...item, name };
+  }
+
+  // ──────────────────────────────────────────────
   // Guruhlar ro'yxati + membersCount
   // ──────────────────────────────────────────────
-  async findAllGroups() {
+  async findAllGroups(lang?: 'uz' | 'ru') {
     const groups = await this.groupRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
@@ -46,13 +57,31 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
       .orderBy('g.createdAt', 'DESC')
       .getMany();
-    return successRes(groups);
+    return successRes(groups.map((g) => this.withName(g, lang)));
+  }
+
+  // ──────────────────────────────────────────────
+  // CategoryId bo'yicha guruhlar:
+  //   1) Guruhning o'z categoryId = berilgan id
+  //   2) Guruhning supCategory.categoryId = berilgan id
+  // ──────────────────────────────────────────────
+  async findByCategoryId(categoryId: string, lang?: 'uz' | 'ru') {
+    const groups = await this.groupRepo
+      .createQueryBuilder('g')
+      .leftJoinAndSelect('g.supCategory', 'sc')
+      .leftJoinAndSelect('g.category', 'cat')
+      .loadRelationCountAndMap('g.membersCount', 'g.markets')
+      .where('g.categoryId = :categoryId', { categoryId })
+      .orWhere('sc.categoryId = :categoryId', { categoryId })
+      .orderBy('g.createdAt', 'DESC')
+      .getMany();
+    return successRes(groups.map((g) => this.withName(g, lang)));
   }
 
   // ──────────────────────────────────────────────
   // Bitta guruh + membersCount
   // ──────────────────────────────────────────────
-  async findOneGroup(id: string) {
+  async findOneGroup(id: string, lang?: 'uz' | 'ru') {
     const group = await this.groupRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
@@ -62,7 +91,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .getOne();
 
     if (!group) throw new NotFoundException('Group not found');
-    return successRes(group);
+    return successRes(this.withName(group, lang));
   }
 
   // ──────────────────────────────────────────────
@@ -102,7 +131,11 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       await this.validateSupCategory(dto.supCategoryId);
     }
 
-    if (dto.name !== undefined) group.name = dto.name.trim();
+    if (dto.nameUz !== undefined) {
+      group.nameUz = dto.nameUz.trim();
+      group.name = group.nameUz;   // name = nameUz (backward compat)
+    }
+    if (dto.nameRu !== undefined) group.nameRu = dto.nameRu ?? null;
     if (dto.description !== undefined) group.description = dto.description ?? null;
     if (dto.supCategoryId !== undefined) group.supCategoryId = dto.supCategoryId ?? null;
     if (profilePhoto !== undefined) group.profilePhoto = profilePhoto ?? null;
@@ -170,13 +203,13 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // ──────────────────────────────────────────────
   // Market qo'shilgan guruhlar ro'yxati
   // ──────────────────────────────────────────────
-  async getMyGroups(marketId: string) {
+  async getMyGroups(marketId: string, lang?: 'uz' | 'ru') {
     const market = await this.marketRepo.findOne({
       where: { id: marketId },
       relations: { groups: { supCategory: true, category: true } },
     });
     if (!market) throw new NotFoundException('Market not found');
-    return successRes(market.groups);
+    return successRes(market.groups.map((g) => this.withName(g, lang)));
   }
 
   // ──────────────────────────────────────────────

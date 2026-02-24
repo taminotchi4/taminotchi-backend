@@ -44,7 +44,6 @@ export class ElonController {
         categoryId: { type: 'string', format: 'uuid' },
         supCategoryId: { type: 'string', format: 'uuid' },
         price: { type: 'string' },
-        groupId: { type: 'string', format: 'uuid' },
         photo: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
@@ -100,7 +99,6 @@ export class ElonController {
         categoryId: { type: 'string', format: 'uuid' },
         supCategoryId: { type: 'string', format: 'uuid' },
         price: { type: 'string' },
-        groupId: { type: 'string', format: 'uuid' },
         status: { type: 'string' },
         photo: {
           type: 'array',

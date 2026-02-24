@@ -44,7 +44,8 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     clientId: string,
     photoPaths?: string[],
   ): Promise<ISuccess<ElonEntity>> {
-    return this.elonRepo.manager.transaction(async (manager) => {
+    // Tranzaksiya: elon + comment + groups + photolar saqlanadi
+    const finalElonId = await this.elonRepo.manager.transaction(async (manager) => {
       const eRepo = manager.getRepository(ElonEntity);
       const cRepo = manager.getRepository(CommentEntity);
       const photoRepo = manager.getRepository(PhotoEntity);
@@ -71,8 +72,6 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       const savedElon = await eRepo.save(elon);
 
-      // Elon yaratilganda categorysi va supCategorysi ga tegishli
-      // guruhlarni avtomatik ManyToMany bog'laymiz
       const whereConditions: object[] = [];
       if (savedElon.categoryId) {
         whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: null });
@@ -99,6 +98,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       savedElon.commentId = savedComment.id;
 
       const finalElon = await eRepo.save(savedElon);
+
       if (photoPaths?.length) {
         await photoRepo.save(
           photoPaths.map((path) =>
@@ -110,39 +110,46 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
           ),
         );
       }
-      const enriched = await this.enrichElons([finalElon]);
 
-      // ── Transaction tashqarida notification yuboramiz ──
-      // (groups ManyToMany ga bog'langan bo'lsa)
-      if (savedElon.groups?.length) {
-        setImmediate(async () => {
-          for (const group of savedElon.groups) {
-            // Guruh a'zolarini olish
-            const members = await this.groupRepo
-              .createQueryBuilder('g')
-              .innerJoin('g.markets', 'm')
-              .select('m.id', 'id')
-              .where('g.id = :gId', { gId: group.id })
-              .getRawMany<{ id: string }>();
-
-            await Promise.all(
-              members.map(async ({ id: memberId }) => {
-                const notif = await this.notifService.create({
-                  userId: memberId,
-                  type: NotificationType.ELON_COMMENT,
-                  referenceId: finalElon.id,
-                  referenceType: NotificationRefType.GROUP,
-                  preview: finalElon.text?.slice(0, 100) ?? null,
-                });
-                this.notifGateway.pushToUser(memberId, notif);
-              }),
-            );
-          }
-        });
-      }
-
-      return successRes(enriched[0], 201);
+      return finalElon.id;
     });
+
+    // Tranzaksiya yakunlangandan keyin enrich qilamiz — photolar commit bo'lgan
+    const saved = await this.elonRepo.findOne({
+      where: { id: finalElonId } as any,
+      relations: { category: true, supCategory: true, groups: true, comment: true } as any,
+    });
+
+    const enriched = await this.enrichElons([saved!]);
+
+    // Notification (yon ta'sir)
+    if (saved?.groups?.length) {
+      setImmediate(async () => {
+        for (const group of saved.groups) {
+          const members = await this.groupRepo
+            .createQueryBuilder('g')
+            .innerJoin('g.markets', 'm')
+            .select('m.id', 'id')
+            .where('g.id = :gId', { gId: group.id })
+            .getRawMany<{ id: string }>();
+
+          await Promise.all(
+            members.map(async ({ id: memberId }) => {
+              const notif = await this.notifService.create({
+                userId: memberId,
+                type: NotificationType.ELON_COMMENT,
+                referenceId: finalElonId,
+                referenceType: NotificationRefType.GROUP,
+                preview: saved.text?.slice(0, 100) ?? null,
+              });
+              this.notifGateway.pushToUser(memberId, notif);
+            }),
+          );
+        }
+      });
+    }
+
+    return successRes(enriched[0], 201);
   }
 
   async updateWithPhoto(
@@ -177,7 +184,13 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         ),
       );
     }
-    const enriched = await this.enrichElons([saved]);
+
+    // Photolar saqlangandan keyin enrich qilamiz
+    const fresh = await this.repo.findOne({
+      where: { id: saved.id } as any,
+      relations: { category: true, supCategory: true, groups: true, comment: true } as any,
+    });
+    const enriched = await this.enrichElons([fresh!]);
     return successRes(enriched[0]);
   }
 

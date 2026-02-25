@@ -191,44 +191,26 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
     return successRes(withName);
   }
 
+
+
   // ──────────────────────────────────────────────
-  // MarketId + categoryId → faqat join bo'lgan guruhlar
+  // Market qo'shilgan guruhlar ro'yxati (+ optional categoryId)
   // ──────────────────────────────────────────────
-  async getMyJoinedGroupsByCategory(marketId: string, categoryId: string, lang?: 'uz' | 'ru') {
-    const groups = await this.groupRepo
+  async getMyGroups(marketId: string, lang?: 'uz' | 'ru', categoryId?: string) {
+    const qb = this.groupRepo
       .createQueryBuilder('g')
       .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
       .leftJoinAndSelect('g.supCategory', 'sc')
       .leftJoinAndSelect('g.category', 'cat')
-      .loadRelationCountAndMap('g.membersCount', 'g.markets')
-      .where('g.categoryId = :categoryId', { categoryId })
-      .orWhere('sc.categoryId = :categoryId', { categoryId })
-      .orderBy('g.createdAt', 'DESC')
-      .getMany();
+      .loadRelationCountAndMap('g.membersCount', 'g.markets');
 
-    return successRes(groups.map((g) => ({
-      ...this.withName(g, lang),
-      isJoined: true, // INNER JOIN orqali faqat joined guruhlar keladi
-    })));
-  }
+    if (categoryId) {
+      qb.andWhere('(g.categoryId = :categoryId OR sc.categoryId = :categoryId)', { categoryId });
+    }
 
-  // ──────────────────────────────────────────────
-  // Market qo'shilgan guruhlar ro'yxati
-  // ──────────────────────────────────────────────
-  async getMyGroups(marketId: string, lang?: 'uz' | 'ru') {
-    const groups = await this.groupRepo
-      .createQueryBuilder('g')
-      .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
-      .leftJoinAndSelect('g.supCategory', 'sc')
-      .leftJoinAndSelect('g.category', 'cat')
-      .loadRelationCountAndMap('g.membersCount', 'g.markets')
-      .orderBy('g.createdAt', 'DESC')
-      .getMany();
+    const groups = await qb.orderBy('g.createdAt', 'DESC').getMany();
 
-    return successRes(groups.map((g) => ({
-      ...this.withName(g, lang),
-      isJoined: true,
-    })));
+    return successRes(groups.map((g) => ({ ...this.withName(g, lang), isJoined: true })));
   }
 
   // ──────────────────────────────────────────────

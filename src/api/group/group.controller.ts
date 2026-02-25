@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -62,11 +64,15 @@ export class GroupController {
     return this.groupService.findByCategoryId(categoryId, req?.lang, marketId);
   }
 
-  @ApiOperation({ summary: 'Market: join bo\'lgan guruhlarim' })
+  @ApiOperation({ summary: 'Market: join bo\'lgan guruhlarim (optional categoryId)' })
+  @ApiQuery({ name: 'categoryId', required: false, type: String })
   @AccessRoles(UserRole.MARKET)
   @Get('me/groups')
-  getMyGroups(@Req() req: any) {
-    return this.groupService.getMyGroups(req.user.id, req?.lang);
+  getMyGroups(
+    @Req() req: any,
+    @Query('categoryId', new ParseUUIDPipe({ optional: true })) categoryId?: string,
+  ) {
+    return this.groupService.getMyGroups(req.user.id, req?.lang, categoryId);
   }
 
   @ApiOperation({ summary: 'Market: join bo\'lgan kategoriyalarim' })
@@ -76,15 +82,7 @@ export class GroupController {
     return this.groupService.getMyJoinedCategories(req.user.id, req?.lang);
   }
 
-  @ApiOperation({ summary: 'Market: categoryId bo\'yicha join bo\'lgan guruhlarim' })
-  @AccessRoles(UserRole.MARKET)
-  @Get('me/join-by-category/:categoryId')
-  getMyJoinedGroupsByCategory(
-    @Param('categoryId', ParseUUIDPipe) categoryId: string,
-    @Req() req: any,
-  ) {
-    return this.groupService.getMyJoinedGroupsByCategory(req.user.id, categoryId, req?.lang);
-  }
+
 
   // ── 2. Dinamik GET routelar — :id ─────────────────────────────────────────
 

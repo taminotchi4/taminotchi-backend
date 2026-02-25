@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -72,11 +72,13 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       const savedElon = await eRepo.save(elon);
 
-      const whereConditions: object[] = [];
+      const whereConditions: any[] = [];
       if (savedElon.categoryId) {
-        whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: null });
+        // Asosiy kategoriya guruhini topish (supCategoryId null bo'lishi shart)
+        whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: IsNull() });
       }
       if (savedElon.supCategoryId) {
+        // Subkategoriya guruhini topish
         whereConditions.push({ supCategoryId: savedElon.supCategoryId });
       }
 

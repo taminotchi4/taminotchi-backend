@@ -220,6 +220,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     const queryBuilder = this.repo.createQueryBuilder('elon')
       .leftJoinAndSelect('elon.category', 'category')
       .leftJoinAndSelect('elon.supCategory', 'supCategory')
+      .leftJoinAndSelect('elon.client', 'client')
       .leftJoinAndSelect('elon.groups', 'groups')
       .leftJoinAndSelect('elon.comment', 'comment')
       .where('elon.isDeleted = :isDeleted', { isDeleted: false });
@@ -282,21 +283,41 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       const eRepo = manager.getRepository(ElonEntity);
       const cRepo = manager.getRepository(CommentEntity);
 
-      const elon = await eRepo.findOne({ where: { id, isDeleted: false } as any });
-      if (!elon) throw new NotFoundException('Not found');
+      const now = new Date();
 
-      const commentId = elon.commentId;
-      await eRepo.update(id as any, {
-        isDeleted: true,
-        deletedAt: new Date(),
-      } as any);
+      const elon = await eRepo.findOne({
+        where: { id, isDeleted: false } as any,
+        select: ['id', 'commentId'],
+      });
 
-      if (commentId) {
-        await cRepo.update(commentId as any, {
-          isDeleted: true,
-          deletedAt: new Date(),
-        } as any);
+      if (!elon) throw new NotFoundException('Elon not found');
+
+      // 1️⃣ elonga tegishli photolar
+      await manager.update(
+        'photo',
+        { elonId: id, isDeleted: false },
+        { isDeleted: true, deletedAt: now },
+      );
+
+      // 2️⃣ group_elon pivot (soft yo‘q bo‘lsa hard delete qilamiz)
+      await manager.query(
+        `DELETE FROM "group_elon" WHERE "elonId" = $1`,
+        [id],
+      );
+
+      // 3️⃣ comment (thread) soft delete
+      if (elon.commentId) {
+        await cRepo.update(
+          { id: elon.commentId, isDeleted: false } as any,
+          { isDeleted: true, deletedAt: now } as any,
+        );
       }
+
+      // 4️⃣ elon o‘zi
+      await eRepo.update(
+        { id } as any,
+        { isDeleted: true, deletedAt: now } as any,
+      );
 
       return successRes({ deleted: true });
     });

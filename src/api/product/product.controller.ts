@@ -12,11 +12,13 @@ import {
   UseGuards,
   ForbiddenException,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { FindProductQueryDto } from './dto/find-product-query.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
@@ -76,8 +78,8 @@ export class ProductController {
   }
 
   @Get()
-  findAll() {
-    return this.productService.findAll();
+  findAll(@Query() query: FindProductQueryDto) {
+    return this.productService.findWithPaginationAndFilters(query);
   }
 
   @Get(':id')

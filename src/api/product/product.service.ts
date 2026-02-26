@@ -12,6 +12,7 @@ import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { FindProductQueryDto } from './dto/find-product-query.dto';
 
 @Injectable()
 export class ProductService extends BaseService<CreateProductDto, UpdateProductDto, ProductEntity> {
@@ -140,6 +141,54 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     return successRes(enriched);
   }
 
+  async findWithPaginationAndFilters(query: FindProductQueryDto): Promise<ISuccess<ProductEntity[]>> {
+    const { page = 1, limit = 10, categoryId, supCategoryId, marketId } = query;
+
+    const queryBuilder = this.repo.createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supCategory', 'supCategory')
+      .leftJoinAndSelect('product.market', 'market')
+      .leftJoinAndSelect('product.comment', 'comment')
+      .where('product.isDeleted = :isDeleted', { isDeleted: false });
+
+    if (categoryId) {
+      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+    }
+
+    if (supCategoryId) {
+      queryBuilder.andWhere('product.supCategoryId = :supCategoryId', { supCategoryId });
+    }
+
+    if (marketId) {
+      queryBuilder.andWhere('product.marketId = :marketId', { marketId });
+    }
+
+    const skip = (page - 1) * limit;
+
+    queryBuilder
+      .orderBy('product.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+    const enriched = await this.enrichProducts(data);
+
+    const totalPages = Math.ceil(total / limit);
+    const from = total === 0 ? 0 : skip + 1;
+    const to = Math.min(skip + limit, total);
+
+    const meta = {
+      totalElements: total,
+      totalPages,
+      pageSize: limit,
+      currentPage: page,
+      from,
+      to,
+    };
+
+    return successRes(enriched, 200, undefined, meta);
+  }
+
   override async findOneById(id: string): Promise<ISuccess<ProductEntity>> {
     const product = await this.repo.findOne({
       where: { id, isDeleted: false } as any,
@@ -159,21 +208,35 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const prodRepo = manager.getRepository(ProductEntity);
       const commRepo = manager.getRepository(CommentEntity);
 
-      const product = await prodRepo.findOne({ where: { id, isDeleted: false } as any });
-      if (!product) throw new NotFoundException('Not found');
+      const now = new Date();
 
-      const commentId = product.commentId;
-      await prodRepo.update(id as any, {
-        isDeleted: true,
-        deletedAt: new Date(),
-      } as any);
+      const product = await prodRepo.findOne({
+        where: { id, isDeleted: false } as any,
+        select: ['id', 'commentId'],
+      });
 
-      if (commentId) {
-        await commRepo.update(commentId as any, {
-          isDeleted: true,
-          deletedAt: new Date(),
-        } as any);
+      if (!product) throw new NotFoundException('Product not found');
+
+      // 1️⃣ productga tegishli photolar
+      await manager.update(
+        'photo',
+        { productId: id, isDeleted: false },
+        { isDeleted: true, deletedAt: now },
+      );
+
+      // 2️⃣ comment + unga tegishli message lar (message comment orqali cascade hard delete bo‘ladi)
+      if (product.commentId) {
+        await commRepo.update(
+          { id: product.commentId, isDeleted: false } as any,
+          { isDeleted: true, deletedAt: now } as any,
+        );
       }
+
+      // 3️⃣ product o‘zi
+      await prodRepo.update(
+        { id } as any,
+        { isDeleted: true, deletedAt: now } as any,
+      );
 
       return successRes({ deleted: true });
     });

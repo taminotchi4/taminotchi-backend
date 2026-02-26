@@ -104,7 +104,7 @@ export class MarketController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.marketService.findOneById(id);

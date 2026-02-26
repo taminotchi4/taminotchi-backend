@@ -138,7 +138,7 @@ export class GroupController {
   @UseInterceptors(
     FileInterceptor(
       'profilePhoto',
-      buildMulterOptions({ folder: 'group', allowed: 'image', maxSizeMb: 8 }),
+      buildMulterOptions({ folder: 'group', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
   update(

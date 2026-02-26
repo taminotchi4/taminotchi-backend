@@ -62,15 +62,14 @@ export class PrivateChatService {
     const marketId =
       senderRole === UserRole.MARKET ? senderId : receiverId;
 
-    // ── Mavjud chatni izlash ───────────────────────────────
     const existing = await this.chatRepo.findOne({
-      where: { clientId, marketId },
+      where: { clientId, marketId, isDeleted: false },
     });
 
     if (existing) {
       // Chat bor → messages bilan qaytaramiz
       const messages = await this.msgRepo.find({
-        where: { privateChatId: existing.id },
+        where: { privateChatId: existing.id, isDeleted: false },
         order: { createdAt: 'ASC' },
       });
       return successRes({ ...existing, messages });
@@ -91,19 +90,20 @@ export class PrivateChatService {
 
     if (role === UserRole.CLIENT) {
       chats = await this.chatRepo.find({
-        where: { clientId: userId },
+        where: { clientId: userId, isDeleted: false },
         relations: { market: true },
         order: { createdAt: 'DESC' } as any,
       });
     } else if (role === UserRole.MARKET) {
       chats = await this.chatRepo.find({
-        where: { marketId: userId },
+        where: { marketId: userId, isDeleted: false },
         relations: { client: true },
         order: { createdAt: 'DESC' } as any,
       });
     } else {
       // ADMIN — barchasini ko'radi
       chats = await this.chatRepo.find({
+        where: { isDeleted: false },
         relations: { client: true, market: true },
         order: { createdAt: 'DESC' } as any,
       });
@@ -117,6 +117,7 @@ export class PrivateChatService {
     const lastMessages = await this.msgRepo
       .createQueryBuilder('m')
       .where('m.privateChatId IN (:...ids)', { ids: chatIds })
+      .andWhere('m.isDeleted = false')
       .distinctOn(['m.privateChatId'])
       .orderBy('m.privateChatId')
       .addOrderBy('m.createdAt', 'DESC')

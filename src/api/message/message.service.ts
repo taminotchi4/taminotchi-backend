@@ -29,7 +29,7 @@ export class MessageService {
     requesterId: string,
     requesterRole: UserRole,
   ) {
-    const msg = await this.msgRepo.findOne({ where: { id } });
+    const msg = await this.msgRepo.findOne({ where: { id, isDeleted: false } });
     if (!msg) throw new NotFoundException('Message not found');
 
     // Faqat yuborganchi tahrirlaydi
@@ -60,7 +60,7 @@ export class MessageService {
     requesterId: string,
     requesterRole: UserRole,
   ) {
-    const msg = await this.msgRepo.findOne({ where: { id } });
+    const msg = await this.msgRepo.findOne({ where: { id, isDeleted: false } });
     if (!msg) throw new NotFoundException('Message not found');
 
     const isAdmin =
@@ -73,7 +73,10 @@ export class MessageService {
       throw new ForbiddenException('You can only delete your own messages');
     }
 
-    await this.msgRepo.delete(id);
+    await this.msgRepo.update(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    } as any);
     return successRes({ deleted: true });
   }
 
@@ -85,7 +88,7 @@ export class MessageService {
     id: string,
     requesterId: string,
   ) {
-    const msg = await this.msgRepo.findOne({ where: { id } });
+    const msg = await this.msgRepo.findOne({ where: { id, isDeleted: false } });
     if (!msg) throw new NotFoundException('Message not found');
 
     // Yuborganchi o'z xabarini seen qila olmaydi

@@ -7,6 +7,7 @@ interface ConfigType {
     PORT: string;
     NODE_ENV: string;
     ENABLE_GEOIP: boolean;
+    CLEANUP_DAYS: number;
 
     TOKEN: {
         ACCESS_TOKEN_KEY: string;
@@ -39,12 +40,13 @@ export const config: ConfigType = {
     PORT: String(process.env.PORT),
     NODE_ENV: String(process.env.NODE_ENV),
     ENABLE_GEOIP: String(process.env.ENABLE_GEOIP).toLowerCase() === 'true',
+    CLEANUP_DAYS: Number(process.env.CLEANUP_DAYS) || 30,
 
     TOKEN: {
         ACCESS_TOKEN_KEY: String(process.env.ACCESS_TOKEN_KEY),
-        ACCESS_TOKEN_TIME: Number(process.env.ACCESS_TOKEN_TIME),
+        ACCESS_TOKEN_TIME: Number(process.env.ACCESS_TOKEN_TIME) || 15,
         REFRESH_TOKEN_KEY: String(process.env.REFRESH_TOKEN_KEY),
-        REFRESH_TOKEN_TIME: Number(process.env.REFRESH_TOKEN_TIME),
+        REFRESH_TOKEN_TIME: Number(process.env.REFRESH_TOKEN_TIME) || 30,
         JWT_SECRET_KEY: String(process.env.JWT_SECRET_KEY),
     },
 

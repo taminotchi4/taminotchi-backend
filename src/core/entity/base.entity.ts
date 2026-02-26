@@ -2,8 +2,10 @@ import {
     CreateDateColumn,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
+    DeleteDateColumn,
+    Column,
 } from 'typeorm';
-import { Transform } from 'class-transformer';
+import { Transform, Expose } from 'class-transformer';
 
 export abstract class BaseEntity {
     @PrimaryGeneratedColumn('uuid')
@@ -20,4 +22,15 @@ export abstract class BaseEntity {
         toPlainOnly: true,
     })
     updatedAt: Date;
+
+    @Column({ type: 'boolean', default: false })
+    @Expose({ toPlainOnly: true })
+    isDeleted: boolean;
+
+    @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+    @Transform(({ value }) => (value instanceof Date ? value.toISOString() : value), {
+        toPlainOnly: true,
+    })
+    deletedAt: Date | null;
 }
+

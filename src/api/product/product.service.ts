@@ -94,7 +94,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     dto: UpdateProductDto,
     photoPaths?: string[],
   ): Promise<ISuccess<ProductEntity>> {
-    const product = await this.repo.findOne({ where: { id } as any });
+    const product = await this.repo.findOne({ where: { id, isDeleted: false } as any });
     if (!product) throw new NotFoundException('Not found');
 
     await this.ensureRelationsExist({
@@ -133,6 +133,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         supCategory: true,
         comment: true,
       } as any,
+      where: { isDeleted: false },
       order: { createdAt: 'DESC' } as any,
     });
     const enriched = await this.enrichProducts(data);
@@ -141,7 +142,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
 
   override async findOneById(id: string): Promise<ISuccess<ProductEntity>> {
     const product = await this.repo.findOne({
-      where: { id } as any,
+      where: { id, isDeleted: false } as any,
       relations: {
         category: true,
         supCategory: true,
@@ -158,14 +159,20 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
       const prodRepo = manager.getRepository(ProductEntity);
       const commRepo = manager.getRepository(CommentEntity);
 
-      const product = await prodRepo.findOne({ where: { id } as any });
+      const product = await prodRepo.findOne({ where: { id, isDeleted: false } as any });
       if (!product) throw new NotFoundException('Not found');
 
       const commentId = product.commentId;
-      await prodRepo.delete(id as any);
+      await prodRepo.update(id as any, {
+        isDeleted: true,
+        deletedAt: new Date(),
+      } as any);
 
       if (commentId) {
-        await commRepo.delete(commentId as any);
+        await commRepo.update(commentId as any, {
+          isDeleted: true,
+          deletedAt: new Date(),
+        } as any);
       }
 
       return successRes({ deleted: true });
@@ -182,12 +189,12 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     const supCategoryRepo = params.supCategoryRepo ?? this.supCategoryRepo;
 
     if (params.categoryId) {
-      const exists = await categoryRepo.exist({ where: { id: params.categoryId } });
+      const exists = await categoryRepo.exist({ where: { id: params.categoryId, isDeleted: false } });
       if (!exists) throw new NotFoundException('category not found');
     }
 
     if (params.supCategoryId) {
-      const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId } });
+      const exists = await supCategoryRepo.exist({ where: { id: params.supCategoryId, isDeleted: false } });
       if (!exists) throw new NotFoundException('supcategory not found');
     }
   }

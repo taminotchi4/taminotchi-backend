@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { RedisModule } from '@nestjs-modules/ioredis';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CleanupModule } from './infrastructure/cleanup/cleanup.module';
 
 import { config } from './config';
 import { AdminModule } from './api/admin/admin.module';
@@ -108,6 +110,8 @@ import { NotificationModule } from './api/notification/notification.module';
     MessageModule,
     PrivateChatModule,
     NotificationModule,
+    ScheduleModule.forRoot(),
+    CleanupModule,
   ],
   providers: [LanguageMiddleware],
 })

@@ -101,13 +101,13 @@ export class AdminService
   async createAdmin(dto: CreateAdminDto) {
     const { phoneNumber, username, password, email } = dto;
 
-    const existsUsername = await this.adminRepo.findOne({ where: { username } });
+    const existsUsername = await this.adminRepo.findOne({ where: { username, isDeleted: false } });
     if (existsUsername) throw new ConflictException('Username already exists!');
 
-    const existsPhoneNumber = await this.adminRepo.findOne({ where: { phoneNumber } });
+    const existsPhoneNumber = await this.adminRepo.findOne({ where: { phoneNumber, isDeleted: false } });
     if (existsPhoneNumber) throw new ConflictException('Phone number already exists');
 
-    const existsEmail = await this.adminRepo.findOne({ where: { email } });
+    const existsEmail = await this.adminRepo.findOne({ where: { email, isDeleted: false } });
     if (existsEmail) throw new ConflictException('Email already exists!');
 
     const hashPassword = await this.crypto.encrypt(password);
@@ -139,6 +139,7 @@ export class AdminService
 
   async findAllAdmins() {
     const admins = await this.adminRepo.find({
+      where: { isDeleted: false },
       select: ['id', 'username', 'phoneNumber', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
       order: { createdAt: 'DESC' },
     });
@@ -148,7 +149,7 @@ export class AdminService
 
   async findOneAdmin(id: string) {
     const admin = await this.adminRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       select: ['id', 'username', 'phoneNumber', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
     });
 
@@ -157,23 +158,23 @@ export class AdminService
   }
 
   async updateAdmin(id: string, dto: UpdateAdminDto) {
-    const admin = await this.adminRepo.findOne({ where: { id } });
+    const admin = await this.adminRepo.findOne({ where: { id, isDeleted: false } });
     if (!admin) throw new NotFoundException('Admin not found');
 
     if (dto.username && dto.username !== admin.username) {
-      const existsUsername = await this.adminRepo.findOne({ where: { username: dto.username } });
+      const existsUsername = await this.adminRepo.findOne({ where: { username: dto.username, isDeleted: false } });
       if (existsUsername) throw new ConflictException('Username already exists!');
       admin.username = dto.username;
     }
 
     if (dto.phoneNumber && dto.phoneNumber !== admin.phoneNumber) {
-      const existsPhoneNumber = await this.adminRepo.findOne({ where: { phoneNumber: dto.phoneNumber } });
+      const existsPhoneNumber = await this.adminRepo.findOne({ where: { phoneNumber: dto.phoneNumber, isDeleted: false } });
       if (existsPhoneNumber) throw new ConflictException('Phone number already exists');
       admin.phoneNumber = dto.phoneNumber;
     }
 
     if (dto.email && dto.email !== admin.email) {
-      const existsEmail = await this.adminRepo.findOne({ where: { email: dto.email } });
+      const existsEmail = await this.adminRepo.findOne({ where: { email: dto.email, isDeleted: false } });
       if (existsEmail) throw new ConflictException('Email already exists!');
       admin.email = dto.email;
     }
@@ -201,7 +202,7 @@ export class AdminService
   }
 
   async deleteAdmin(id: string) {
-    const admin = await this.adminRepo.findOne({ where: { id } });
+    const admin = await this.adminRepo.findOne({ where: { id, isDeleted: false } });
     if (!admin) throw new NotFoundException('Admin not found');
 
     if (admin.role === UserRole.SUPERADMIN) {
@@ -232,6 +233,7 @@ export class AdminService
       .select(`to_char(date_trunc('day', t."createdAt"), 'YYYY-MM-DD')`, 'day')
       .addSelect('COUNT(*)', 'count')
       .where(`t."createdAt" >= NOW() - INTERVAL '7 days'`)
+      .andWhere('t.isDeleted = false')
       .groupBy('day')
       .orderBy('day', 'ASC')
       .getRawMany<{ day: string; count: string }>();
@@ -258,22 +260,22 @@ export class AdminService
       marketsActive,
       productsActive,
     ] = await Promise.all([
-      this.adminRepo.count(),
-      this.clientRepo.count(),
-      this.marketRepo.count(),
-      this.categoryRepo.count(),
-      this.groupRepo.count(),
-      this.elonRepo.count(),
-      this.productRepo.count(),
-      this.marketRepo.count({ where: { isActive: true } }),
-      this.productRepo.count({ where: { isActive: true } }),
+      this.adminRepo.count({ where: { isDeleted: false } }),
+      this.clientRepo.count({ where: { isDeleted: false } }),
+      this.marketRepo.count({ where: { isDeleted: false } }),
+      this.categoryRepo.count({ where: { isDeleted: false } }),
+      this.groupRepo.count({ where: { isDeleted: false } }),
+      this.elonRepo.count({ where: { isDeleted: false } }),
+      this.productRepo.count({ where: { isDeleted: false } }),
+      this.marketRepo.count({ where: { isActive: true, isDeleted: false } }),
+      this.productRepo.count({ where: { isActive: true, isDeleted: false } }),
     ]);
 
     let elonStatus: AdminStatsResponseDto['elonStatus'] | undefined;
     try {
       const [negotiation, agreed] = await Promise.all([
-        this.elonRepo.count({ where: { status: 'negotiation' as any } }),
-        this.elonRepo.count({ where: { status: 'agreed' as any } }),
+        this.elonRepo.count({ where: { status: 'negotiation' as any, isDeleted: false } }),
+        this.elonRepo.count({ where: { status: 'agreed' as any, isDeleted: false } }),
       ]);
       elonStatus = { negotiation, agreed };
     } catch {

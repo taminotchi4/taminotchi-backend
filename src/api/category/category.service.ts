@@ -30,7 +30,7 @@ export class CategoryService {
   ) { }
 
   private async ensureUniqueNameUz(nameUz: string, ignoreId?: string) {
-    const exists = await this.categoryRepo.findOne({ where: { nameUz } });
+    const exists = await this.categoryRepo.findOne({ where: { nameUz, isDeleted: false } });
     if (exists && exists.id !== ignoreId) {
       throw new ConflictException('Category nameUz already exists');
     }
@@ -123,6 +123,7 @@ export class CategoryService {
     const data = await this.categoryRepo.find({
       order: { createdAt: 'DESC' } as any,
       relations: { supCategories: true },
+      where: { isDeleted: false },
     });
     return successRes(
       data.map((c) => ({
@@ -134,7 +135,7 @@ export class CategoryService {
 
   async findOne(id: string, lang?: 'uz' | 'ru'): Promise<ISuccess<any>> {
     const data = await this.categoryRepo.findOne({
-      where: { id } as any,
+      where: { id, isDeleted: false } as any,
       relations: {
         supCategories: true,
         products: true,
@@ -156,7 +157,7 @@ export class CategoryService {
     dto: UpdateCategoryDto,
     files?: { photoUrl?: string | null; iconUrl?: string | null },
   ): Promise<ISuccess<CategoryEntity>> {
-    const category = await this.categoryRepo.findOne({ where: { id } });
+    const category = await this.categoryRepo.findOne({ where: { id, isDeleted: false } });
     if (!category) throw new NotFoundException('Not found');
 
     try {
@@ -188,7 +189,7 @@ export class CategoryService {
   }
 
   async remove(id: string): Promise<ISuccess<{ deleted: true }>> {
-    const exists = await this.categoryRepo.findOne({ where: { id } });
+    const exists = await this.categoryRepo.findOne({ where: { id, isDeleted: false } });
     if (!exists) throw new NotFoundException('Not found');
 
     const [supCount, productCount, elonCount] = await Promise.all([
@@ -203,7 +204,10 @@ export class CategoryService {
       );
     }
 
-    await this.categoryRepo.delete(id);
+    await this.categoryRepo.update(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    } as any);
     return successRes({ deleted: true });
   }
 }

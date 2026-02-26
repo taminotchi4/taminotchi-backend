@@ -35,7 +35,7 @@ export function buildMulterOptions(opts: UploadOptions) {
     const folder = opts.folder.replace(/^\//, ''); // '/category' kelsa ham
     const dest = join(process.cwd(), 'uploads', folder);
     const allowed = opts.allowed ?? 'any';
-    const maxSizeMb = opts.maxSizeMb ?? 5;
+    const maxSizeMb = opts.maxSizeMb ?? 8;
 
     ensureDir(dest);
 

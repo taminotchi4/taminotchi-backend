@@ -5,8 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 
 import { GroupEntity } from 'src/core/entity/group.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
@@ -64,6 +64,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .createQueryBuilder('g')
       .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
       .where('g.id IN (:...ids)', { ids: groupIds })
+      .andWhere('g.isDeleted = false')
       .select('g.id', 'gid')
       .getRawMany();
 
@@ -93,6 +94,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .leftJoinAndSelect('g.supCategory', 'sc')
       .leftJoinAndSelect('g.category', 'cat')
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
+      .where('g.isDeleted = false')
       .orderBy('g.createdAt', 'DESC')
       .getMany();
 
@@ -109,8 +111,8 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .leftJoinAndSelect('g.supCategory', 'sc')
       .leftJoinAndSelect('g.category', 'cat')
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
-      .where('g.categoryId = :categoryId', { categoryId })
-      .orWhere('sc.categoryId = :categoryId', { categoryId })
+      .where('(g.categoryId = :categoryId OR sc.categoryId = :categoryId)', { categoryId })
+      .andWhere('g.isDeleted = false')
       .orderBy('g.createdAt', 'DESC')
       .getMany();
 
@@ -128,6 +130,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .leftJoinAndSelect('g.category', 'cat')
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
       .where('g.id = :id', { id })
+      .andWhere('g.isDeleted = false')
       .getOne();
 
     if (!group) throw new NotFoundException('Group not found');
@@ -144,7 +147,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // ──────────────────────────────────────────────
   async getGroupMembers(id: string) {
     const group = await this.groupRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: { markets: true },
     });
     if (!group) throw new NotFoundException('Group not found');
@@ -179,7 +182,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
     if (categoryIds.size === 0) return successRes([]);
 
     const categories = await this.categoryRepo.find({
-      where: [...categoryIds].map((id) => ({ id })) as any,
+      where: { id: In([...categoryIds]), isDeleted: false },
       order: { createdAt: 'DESC' } as any,
     });
 
@@ -208,7 +211,10 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       qb.andWhere('(g.categoryId = :categoryId OR sc.categoryId = :categoryId)', { categoryId });
     }
 
-    const groups = await qb.orderBy('g.createdAt', 'DESC').getMany();
+    const groups = await qb
+      .andWhere('g.isDeleted = false')
+      .orderBy('g.createdAt', 'DESC')
+      .getMany();
 
     return successRes(groups.map((g) => ({ ...this.withName(g, lang), isJoined: true })));
   }
@@ -223,7 +229,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
     requesterRole: UserRole,
     profilePhoto?: string | null,
   ) {
-    const group = await this.groupRepo.findOne({ where: { id } });
+    const group = await this.groupRepo.findOne({ where: { id, isDeleted: false } });
     if (!group) throw new NotFoundException('Group not found');
 
     if (requesterRole === UserRole.MARKET) {
@@ -251,14 +257,17 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // Guruhni o'chirish (faqat admin)
   // ──────────────────────────────────────────────
   async deleteGroup(id: string, requesterId: string, requesterRole: UserRole) {
-    const group = await this.groupRepo.findOne({ where: { id } });
+    const group = await this.groupRepo.findOne({ where: { id, isDeleted: false } });
     if (!group) throw new NotFoundException('Group not found');
 
     if (requesterRole === UserRole.MARKET) {
       throw new ForbiddenException('Only admins can delete groups');
     }
 
-    await this.groupRepo.delete(id);
+    await this.groupRepo.update(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    } as any);
     return successRes({ deleted: true });
   }
 

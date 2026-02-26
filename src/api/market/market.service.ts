@@ -69,7 +69,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async requestRegisterOtp(dto: RequestMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const code = String(randomInt(100000, 1000000));
@@ -87,14 +87,14 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async checkPhone(phoneNumber: string) {
     const phone = phoneNumber.trim();
-    const exists = await this.repo.findOne({ where: { phoneNumber: phone } as any });
+    const exists = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
   async checkUsername(username: string) {
     const value = username.trim();
     if (!value) return successRes({ exists: false });
-    const exists = await this.repo.findOne({ where: { username: value } as any });
+    const exists = await this.repo.findOne({ where: { username: value, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
@@ -108,13 +108,13 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const phoneNumber = dto.phoneNumber.trim();
     await this.ensureAdressExists(dto.adressId);
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     if (dto.username && dto.username !== undefined) {
       const username = dto.username.trim();
       if (!username) throw new BadRequestException('Username cannot be empty');
-      const existsUsername = await this.repo.findOne({ where: { username } as any });
+      const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
@@ -173,12 +173,12 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
     if (dto.username !== undefined) {
       const username = dto.username.trim();
       if (!username) throw new BadRequestException('Username cannot be empty');
-      const existsUsername = await this.repo.findOne({ where: { username } as any });
+      const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
@@ -198,7 +198,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   }
 
   override async update(id: string, dto: UpdateMarketDto): Promise<ISuccess<any>> {
-    const market = await this.repo.findOne({ where: { id } as any });
+    const market = await this.repo.findOne({ where: { id, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Not found');
     await this.ensureAdressExists(dto.adressId);
 
@@ -206,7 +206,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber.trim();
-      const existsPhone = await this.repo.findOne({ where: { phoneNumber: phone } as any });
+      const existsPhone = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
       if (existsPhone && (existsPhone as any).id !== id)
         throw new ConflictException('Phone number already exists');
       market.phoneNumber = phone;
@@ -214,7 +214,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (dto.username !== undefined) {
       const username = dto.username?.trim() ?? null;
       if (username) {
-        const existsUsername = await this.repo.findOne({ where: { username } as any });
+        const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
         if (existsUsername && (existsUsername as any).id !== id) {
           throw new ConflictException('Username already exists');
         }
@@ -241,7 +241,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async myProducts(marketId: string): Promise<ISuccess<ProductEntity[]>> {
     const data = await this.productRepo.find({
-      where: { marketId } as any,
+      where: { marketId, isDeleted: false } as any,
       relations: {
         photos: true,
         comment: true,

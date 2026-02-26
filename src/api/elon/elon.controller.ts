@@ -12,12 +12,14 @@ import {
   UseGuards,
   ForbiddenException,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { ElonService } from './elon.service';
 import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
 import { UpdateElonStatusDto } from './dto/update-elon-status.dto';
+import { FindElonQueryDto } from './dto/find-elon-query.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
@@ -56,7 +58,7 @@ export class ElonController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 8 }),
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
   create(
@@ -76,8 +78,8 @@ export class ElonController {
   }
 
   @Get()
-  findAll() {
-    return this.elonService.findAll();
+  findAll(@Query() query: FindElonQueryDto) {
+    return this.elonService.findWithPaginationAndFilters(query);
   }
 
   @Get(':id')
@@ -111,7 +113,7 @@ export class ElonController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'photo', maxCount: 10 }],
-      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 8 }),
+      buildMulterOptions({ folder: 'elon', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
   update(

@@ -70,7 +70,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async requestRegisterOtp(dto: RequestClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const code = String(randomInt(100000, 1000000));
@@ -88,14 +88,14 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async checkPhone(phoneNumber: string) {
     const phone = phoneNumber.trim();
-    const exists = await this.repo.findOne({ where: { phoneNumber: phone } as any });
+    const exists = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
   async checkUsername(username: string) {
     const value = username.trim();
     if (!value) return successRes({ exists: false });
-    const exists = await this.repo.findOne({ where: { username: value } as any });
+    const exists = await this.repo.findOne({ where: { username: value, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
@@ -140,11 +140,11 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (!ok) throw new BadRequestException('Phone not verified');
 
     if (dto.username) {
-      const existsUsername = await this.repo.findOne({ where: { username: dto.username } as any });
+      const existsUsername = await this.repo.findOne({ where: { username: dto.username, isDeleted: false } as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber } as any });
+    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const entity = this.repo.create({
@@ -161,12 +161,12 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
   }
 
   override async update(id: string, dto: UpdateClientDto): Promise<ISuccess<any>> {
-    const client = await this.repo.findOne({ where: { id } });
+    const client = await this.repo.findOne({ where: { id, isDeleted: false } });
     if (!client) throw new NotFoundException('Not found');
 
     if (dto.username) {
       const username = dto.username.trim();
-      const u = await this.repo.findOne({ where: { username } });
+      const u = await this.repo.findOne({ where: { username, isDeleted: false } });
       if (u && (u).id !== id) throw new ConflictException('Username already exists');
       (client).username = username;
     }
@@ -174,7 +174,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber?.trim() ?? null;
       if (phone) {
-        const p = await this.repo.findOne({ where: { phoneNumber: phone } });
+        const p = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } });
         if (p && (p).id !== id) throw new ConflictException('Phone number already exists');
       }
       (client).phoneNumber = phone;
@@ -197,7 +197,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async myElons(clientId: string): Promise<ISuccess<ElonEntity[]>> {
     const data = await this.elonRepo.find({
-      where: { clientId } as any,
+      where: { clientId, isDeleted: false } as any,
       relations: {
         photos: true,
         comment: true,

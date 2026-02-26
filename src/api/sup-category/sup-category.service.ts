@@ -131,6 +131,7 @@ export class SupCategoryService {
 
   async findAll(lang?: 'uz' | 'ru'): Promise<ISuccess<any[]>> {
     const data = await this.supCategoryRepo.find({
+      where: { isDeleted: false },
       order: { createdAt: 'DESC' } as any,
     });
     return successRes(data.map((c) => this.withName(this.withUrls(c) as any, lang)));
@@ -138,7 +139,7 @@ export class SupCategoryService {
 
   async findOne(id: string, lang?: 'uz' | 'ru'): Promise<ISuccess<any>> {
     const data = await this.supCategoryRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: {
         products: true,
         groups: true,
@@ -154,7 +155,7 @@ export class SupCategoryService {
     dto: UpdateSupCategoryDto,
     files?: { photoUrl?: string | null; iconUrl?: string | null },
   ): Promise<ISuccess<SupCategoryEntity>> {
-    const supCategory = await this.supCategoryRepo.findOne({ where: { id } });
+    const supCategory = await this.supCategoryRepo.findOne({ where: { id, isDeleted: false } });
     if (!supCategory) throw new NotFoundException('Not found');
 
     try {
@@ -190,12 +191,12 @@ export class SupCategoryService {
   }
 
   async remove(id: string): Promise<ISuccess<{ deleted: true }>> {
-    const exists = await this.supCategoryRepo.findOne({ where: { id } as any });
+    const exists = await this.supCategoryRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!exists) throw new NotFoundException('Not found');
 
     const [productCount, elonCount] = await Promise.all([
-      this.productRepo.count({ where: { supCategoryId: id } as any }),
-      this.elonRepo.count({ where: { supCategoryId: id } as any }),
+      this.productRepo.count({ where: { supCategoryId: id, isDeleted: false } as any }),
+      this.elonRepo.count({ where: { supCategoryId: id, isDeleted: false } as any }),
     ]);
 
     // Guruhlar onDelete: SET NULL — supCategoryId null ga o'rnatiladi, o'chirilmaydi
@@ -205,7 +206,10 @@ export class SupCategoryService {
       );
     }
 
-    await this.supCategoryRepo.delete(id as any);
+    await this.supCategoryRepo.update(id as any, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    } as any);
     return successRes({ deleted: true });
   }
 }

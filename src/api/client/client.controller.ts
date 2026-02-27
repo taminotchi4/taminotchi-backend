@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -7,12 +7,14 @@ import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
 
-import { UserRole } from 'src/common/enum/index.enum';
+import { LanguageType, UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
 import { ClientLoginDto } from './dto/client-login.dto';
 import type { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { buildMulterOptions, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
 @ApiTags('Client')
 @Controller('client')
@@ -87,13 +89,40 @@ export class ClientController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.CLIENT)
   @Patch('me/profile')
-  updateMe(@Req() req: any, @Body() dto: UpdateClientDto) {
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        fullName: { type: 'string' },
+        username: { type: 'string' },
+        phoneNumber: { type: 'string' },
+        password: { type: 'string' },
+        language: { type: 'string', enum: Object.values(LanguageType) },
+        photo: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor(
+      'photo',
+      buildMulterOptions({ folder: 'client', allowed: 'image', maxSizeMb: 10 }),
+    ),
+  )
+  updateMe(
+    @Req() req: any,
+    @Body() dto: UpdateClientDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (file) {
+      dto.photoPath = toPublicPath('client', file.filename);
+    }
     return this.clientService.updateMe(req.user.id, dto);
   }
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.CLIENT, UserRole.MARKET)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientService.findOneById(id);
@@ -111,7 +140,17 @@ export class ClientController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.clientService.delete(id);
+  removeByAdmin(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+  ) {
+    return this.clientService.deleteWithRole(id, req.user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Delete('me')
+  removeSelf(@Req() req: any) {
+    return this.clientService.deleteWithRole(req.user.id, req.user);
   }
 }

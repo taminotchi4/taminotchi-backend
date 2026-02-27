@@ -85,7 +85,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
       if (whereConditions.length) {
         const autoGroups = await groupRepo.find({
-          where: { ...whereConditions, isDeleted: false } as any,
+          where: whereConditions.map((cond) => ({ ...cond, isDeleted: false })),
         });
         if (autoGroups.length) {
           savedElon.groups = autoGroups;

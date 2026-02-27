@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { randomInt } from 'crypto';
 import type { Redis } from 'ioredis';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -20,6 +20,11 @@ import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
 import { AdressEntity } from 'src/core/entity/adress.entity';
 import { ProductEntity } from 'src/core/entity/product.entity';
+import { PhotoEntity } from 'src/core/entity/photo.entity';
+import { MessageEntity } from 'src/core/entity/message.entity';
+import { CommentEntity } from 'src/core/entity/comment.entity';
+import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
+import { UserRole } from 'src/common/enum/index.enum';
 
 @Injectable()
 export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto, MarketEntity> {
@@ -254,7 +259,138 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   }
 
   async updateMe(marketId: string, dto: UpdateMarketDto) {
-    const { isActive, ...rest } = dto;
-    return this.update(marketId, rest);
+    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    if (!market) throw new NotFoundException('Not found');
+
+    if (dto.name !== undefined) market.name = dto.name;
+
+    if (dto.phoneNumber !== undefined) {
+      const phone = dto.phoneNumber?.trim();
+      if (!phone) throw new BadRequestException('Phone number cannot be empty');
+      const existsPhone = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
+      if (existsPhone && (existsPhone as any).id !== marketId)
+        throw new ConflictException('Phone number already exists');
+      market.phoneNumber = phone;
+    }
+
+    if (dto.username !== undefined) {
+      const username = dto.username?.trim();
+      if (username) {
+        const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
+        if (existsUsername && (existsUsername as any).id !== marketId) {
+          throw new ConflictException('Username already exists');
+        }
+        market.username = username;
+      }
+    }
+
+    if (dto.password) {
+      market.password = await this.crypto.encrypt(dto.password);
+    }
+
+    if (dto.photoPath !== undefined) market.photoPath = dto.photoPath ?? null;
+    if (dto.adressId !== undefined) {
+      await this.ensureAdressExists(dto.adressId);
+      market.adressId = dto.adressId ?? null;
+    }
+    if (dto.language !== undefined) market.language = dto.language;
+
+    const saved = await this.repo.save(market);
+    return successRes(this.safe(saved));
+  }
+
+  async deleteWithRole(
+    idFromParam: string | undefined,
+    user: any,
+  ): Promise<ISuccess<{ deleted: true }>> {
+
+    // SUPERADMIN boshqa clientni o‘chiradi
+    if (user.role === UserRole.SUPERADMIN) {
+      if (!idFromParam) throw new BadRequestException('ID required');
+      return this.SoftDelete(idFromParam);
+    }
+
+    // CLIENT o‘zini o‘chiradi
+    if (user.role === UserRole.MARKET) {
+      if (idFromParam && idFromParam !== user.id) throw new BadRequestException('You can only delete your own account');
+      return this.SoftDelete(user.id);
+    }
+
+    throw new ForbiddenException('Access denied');
+  }
+
+  async SoftDelete(id: string): Promise<ISuccess<{ deleted: true }>> {
+    return this.repo.manager.transaction(async (manager) => {
+      const now = new Date();
+
+      const market = await manager.findOne(MarketEntity, {
+        where: { id, isDeleted: false } as any,
+        select: ['id'],
+      });
+      if (!market) throw new NotFoundException('Market not found');
+
+      // ───── PRODUCTS ─────
+      const products = await manager.find(ProductEntity, {
+        where: { marketId: id, isDeleted: false } as any,
+        select: ['id', 'commentId'],
+      });
+
+      const productIds = products.map(p => p.id);
+      const productCommentIds = products
+        .map(p => p.commentId)
+        .filter(Boolean);
+
+      if (productIds.length) {
+        await manager.update(PhotoEntity,
+          { productId: In(productIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(ProductEntity,
+          { id: In(productIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── PRODUCT COMMENTS ─────
+      if (productCommentIds.length) {
+        await manager.update(MessageEntity,
+          { commentId: In(productCommentIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(CommentEntity,
+          { id: In(productCommentIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── PRIVATE CHATS ─────
+      const chats = await manager.find(PrivateChatEntity, {
+        where: { marketId: id, isDeleted: false } as any,
+        select: ['id'],
+      });
+
+      const chatIds = chats.map(c => c.id);
+
+      if (chatIds.length) {
+        await manager.update(MessageEntity,
+          { privateChatId: In(chatIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(PrivateChatEntity,
+          { id: In(chatIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── GROUP MEMBERSHIP (pivot cleanup) ─────
+      await manager.query(
+        `DELETE FROM "group_market" WHERE "marketId" = $1`,
+        [id],
+      );
+
+      // ───── MARKET ─────
+      await manager.update(MarketEntity,
+        { id } as any,
+        { isDeleted: true, deletedAt: now });
+
+      return successRes({ deleted: true });
+    });
   }
 }

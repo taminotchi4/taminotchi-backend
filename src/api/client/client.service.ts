@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { randomInt } from 'crypto';
 import type { Redis } from 'ioredis';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -19,6 +19,11 @@ import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
 import { ElonEntity } from 'src/core/entity/elon.entity';
+import { PhotoEntity } from 'src/core/entity/photo.entity';
+import { MessageEntity } from 'src/core/entity/message.entity';
+import { CommentEntity } from 'src/core/entity/comment.entity';
+import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
+import { UserRole } from 'src/common/enum/index.enum';
 
 @Injectable()
 export class ClientService extends BaseService<CreateClientDto, UpdateClientDto, ClientEntity> {
@@ -203,7 +208,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
         comment: true,
         category: true,
         supCategory: true,
-        group: true,
+        groups: true,
       } as any,
       order: { createdAt: 'DESC' } as any,
     });
@@ -211,7 +216,122 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
   }
 
   async updateMe(clientId: string, dto: UpdateClientDto) {
-    const { isActive, role, ...rest } = dto;
-    return this.update(clientId, rest);
+    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    if (!client) throw new NotFoundException('Not found');
+
+    if (dto.username !== undefined) {
+      const username = dto.username?.trim();
+      if (username) {
+        const u = await this.repo.findOne({ where: { username, isDeleted: false } });
+        if (u && (u).id !== clientId) throw new ConflictException('Username already exists');
+        client.username = username;
+      }
+    }
+
+    if (dto.phoneNumber !== undefined) {
+      const phone = dto.phoneNumber?.trim();
+      if (!phone) throw new BadRequestException('Phone number cannot be empty');
+      const p = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } });
+      if (p && (p).id !== clientId) throw new ConflictException('Phone number already exists');
+      client.phoneNumber = phone;
+    }
+
+    if (dto.password) {
+      client.password = await this.crypto.encrypt(dto.password);
+    }
+
+    if (dto.fullName !== undefined) client.fullName = dto.fullName;
+    if (dto.language !== undefined) client.language = dto.language;
+    if (dto.photoPath !== undefined) client.photoPath = dto.photoPath;
+
+    const saved = await this.repo.save(client);
+    return successRes(this.safe(saved));
+  }
+
+  async deleteWithRole(
+    idFromParam: string | undefined,
+    user: any,
+  ): Promise<ISuccess<{ deleted: true }>> {
+
+    // SUPERADMIN boshqa clientni o‘chiradi
+    if (user.role === UserRole.SUPERADMIN) {
+      if (!idFromParam) throw new BadRequestException('ID required');
+      return this.SoftDelete(idFromParam);
+    }
+
+    // CLIENT o‘zini o‘chiradi
+    if (user.role === UserRole.CLIENT) {
+      if (idFromParam && idFromParam !== user.id) throw new BadRequestException('You can only delete your own account');
+      return this.SoftDelete(user.id);
+    }
+
+    throw new ForbiddenException('Access denied');
+  }
+
+  async SoftDelete(id: string): Promise<ISuccess<{ deleted: true }>> {
+    return this.repo.manager.transaction(async (manager) => {
+      const now = new Date();
+
+      const client = await manager.findOne(ClientEntity, {
+        where: { id, isDeleted: false } as any,
+        select: ['id'],
+      });
+      if (!client) throw new NotFoundException('Client not found');
+
+      // ───── ELONS ─────
+      const elons = await manager.find(ElonEntity, {
+        where: { clientId: id, isDeleted: false } as any,
+        select: ['id', 'commentId'],
+      });
+
+      const elonIds = elons.map(e => e.id);
+      const elonCommentIds = elons.map(e => e.commentId).filter(Boolean);
+
+      if (elonIds.length) {
+        await manager.update(PhotoEntity,
+          { elonId: In(elonIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(ElonEntity,
+          { id: In(elonIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── ELON COMMENTS ─────
+      if (elonCommentIds.length) {
+        await manager.update(MessageEntity,
+          { commentId: In(elonCommentIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(CommentEntity,
+          { id: In(elonCommentIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── PRIVATE CHATS ─────
+      const chats = await manager.find(PrivateChatEntity, {
+        where: { clientId: id, isDeleted: false } as any,
+        select: ['id'],
+      });
+
+      const chatIds = chats.map(c => c.id);
+
+      if (chatIds.length) {
+        await manager.update(MessageEntity,
+          { privateChatId: In(chatIds), isDeleted: false },
+          { isDeleted: true, deletedAt: now });
+
+        await manager.update(PrivateChatEntity,
+          { id: In(chatIds) },
+          { isDeleted: true, deletedAt: now });
+      }
+
+      // ───── CLIENT ─────
+      await manager.update(ClientEntity,
+        { id } as any,
+        { isDeleted: true, deletedAt: now });
+
+      return successRes({ deleted: true });
+    });
   }
 }

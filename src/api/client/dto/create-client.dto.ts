@@ -45,4 +45,9 @@ export class CreateClientDto {
     @IsOptional()
     @IsEnum(LanguageType)
     language?: LanguageType;
+
+    @ApiPropertyOptional({ example: '/uploads/client/photo.png' })
+    @IsOptional()
+    @IsString()
+    photoPath?: string | null;
 }

@@ -9,9 +9,11 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MarketService } from './market.service';
 import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
@@ -23,7 +25,9 @@ import type { Response } from 'express';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
-import { UserRole } from 'src/common/enum/index.enum';
+import { UserRole, LanguageType } from 'src/common/enum/index.enum';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { buildMulterOptions, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
 @ApiTags('Market')
 @Controller('market')
@@ -98,7 +102,35 @@ export class MarketController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.MARKET)
   @Patch('me/profile')
-  updateMe(@Req() req: any, @Body() dto: UpdateMarketDto) {
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        username: { type: 'string' },
+        phoneNumber: { type: 'string' },
+        password: { type: 'string' },
+        adressId: { type: 'string', format: 'uuid' },
+        language: { type: 'string', enum: Object.values(LanguageType) },
+        photo: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor(
+      'photo',
+      buildMulterOptions({ folder: 'market', allowed: 'image', maxSizeMb: 10 }),
+    ),
+  )
+  updateMe(
+    @Req() req: any,
+    @Body() dto: UpdateMarketDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (file) {
+      dto.photoPath = toPublicPath('market', file.filename);
+    }
     return this.marketService.updateMe(req.user.id, dto);
   }
 
@@ -122,7 +154,17 @@ export class MarketController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.marketService.delete(id);
+  removeByAdmin(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+  ) {
+    return this.marketService.deleteWithRole(id, req.user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Delete('me')
+  removeSelf(@Req() req: any) {
+    return this.marketService.deleteWithRole(req.user.id, req.user);
   }
 }

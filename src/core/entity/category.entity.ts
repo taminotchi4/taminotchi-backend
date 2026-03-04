@@ -25,6 +25,9 @@ export class CategoryEntity extends BaseEntity {
     @Column({ type: 'boolean', default: false })
     withAdress: boolean;
 
+    @Column({ type: 'boolean', default: false })
+    forProduct: boolean;
+
     // product.categoryId
     @OneToMany(() => ProductEntity, (p) => p.category)
     products: ProductEntity[];
@@ -32,6 +35,9 @@ export class CategoryEntity extends BaseEntity {
     // group.categoryId
     @OneToMany(() => SupCategoryEntity, (sc) => sc.category)
     supCategories: SupCategoryEntity[];
+
+    @OneToMany(() => GroupEntity, (g) => g.category)
+    groups: GroupEntity[];
 
     // elon.categoryId
     @OneToMany(() => ElonEntity, (e) => e.category)

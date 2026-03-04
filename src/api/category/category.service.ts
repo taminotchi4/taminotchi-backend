@@ -93,6 +93,7 @@ export class CategoryService {
           nameRu: dto.nameRu ?? null,
           hintText: dto.hintText ?? null,
           ...(dto.withAdress !== undefined ? { withAdress: dto.withAdress } : {}),
+          ...(dto.forProduct !== undefined ? { forProduct: dto.forProduct } : {}),
           photoUrl: files?.photoUrl ?? null,
           iconUrl: files?.iconUrl ?? null,
         });
@@ -171,6 +172,7 @@ export class CategoryService {
       if (dto.nameRu !== undefined) category.nameRu = dto.nameRu ?? null;
       if (dto.hintText !== undefined) category.hintText = dto.hintText ?? null;
       if (dto.withAdress !== undefined) category.withAdress = dto.withAdress;
+      if (dto.forProduct !== undefined) category.forProduct = dto.forProduct;
 
       // Fayl kelsa update qilamiz, kelmasa eski qoladi
       if (files?.photoUrl !== undefined && files.photoUrl !== null && files.photoUrl !== "") {

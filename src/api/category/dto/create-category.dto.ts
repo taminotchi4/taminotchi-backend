@@ -32,6 +32,17 @@ export class CreateCategoryDto {
     @IsBoolean()
     withAdress?: boolean;
 
+    @ApiPropertyOptional({ example: false })
+    @Transform(({ value }) => {
+        if (value === '' || value === null || value === undefined) return undefined;
+        if (value === 'true' || value === true) return true;
+        if (value === 'false' || value === false) return false;
+        return value;
+    })
+    @IsOptional()
+    @IsBoolean()
+    forProduct?: boolean;
+
     // multipart file fields (to satisfy whitelist validation)
     @Allow()
     photo?: any;

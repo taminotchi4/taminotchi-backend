@@ -53,7 +53,7 @@ export class CategoryController {
         nameUz: { type: 'string', example: 'Avto ehtiyot qismlar' },
         nameRu: { type: 'string', example: 'Автозапчасти' },
         hintText: { type: 'string', example: 'Qisqa izoh' },
-        withAdress: { type: 'boolean', example: false },
+        withAdress: { type: 'boolean' },
         photo: { type: 'string', format: 'binary' },
         icon: { type: 'string', format: 'binary' },
       },

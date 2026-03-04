@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -93,6 +93,15 @@ export class GroupChatService {
         senderId: string,
         senderRole: string,
     ): Promise<MessageEntity> {
+        const group = await this.groupRepo.findOne({
+            where: { id: dto.groupId, isDeleted: false },
+        });
+
+        if (!group) throw new NotFoundException('Group not found');
+
+        const member = await this.isMember(dto.groupId, senderId, senderRole);
+        if (!member) throw new ForbiddenException('You are not a member of this group');
+
         if (dto.type === MessageType.TEXT && !dto.text?.trim()) {
             throw new BadRequestException('Text message cannot be empty');
         }

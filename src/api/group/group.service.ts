@@ -205,14 +205,14 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .innerJoin('g.markets', 'm', 'm.id = :marketId', { marketId })
       .leftJoinAndSelect('g.supCategory', 'sc')
       .leftJoinAndSelect('g.category', 'cat')
-      .loadRelationCountAndMap('g.membersCount', 'g.markets');
+      .loadRelationCountAndMap('g.membersCount', 'g.markets')
+      .andWhere('g.isDeleted = false');
 
     if (categoryId) {
       qb.andWhere('(g.categoryId = :categoryId OR sc.categoryId = :categoryId)', { categoryId });
     }
 
     const groups = await qb
-      .andWhere('g.isDeleted = false')
       .orderBy('g.createdAt', 'DESC')
       .getMany();
 
@@ -276,12 +276,12 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // ──────────────────────────────────────────────
   async joinGroup(groupId: string, marketId: string) {
     const group = await this.groupRepo.findOne({
-      where: { id: groupId },
+      where: { id: groupId, isDeleted: false },
       relations: { markets: true },
     });
     if (!group) throw new NotFoundException('Group not found');
 
-    const market = await this.marketRepo.findOne({ where: { id: marketId } });
+    const market = await this.marketRepo.findOne({ where: { id: marketId, isDeleted: false } });
     if (!market) throw new NotFoundException('Market not found');
 
     const alreadyMember = group.markets.some((m) => m.id === marketId);
@@ -298,7 +298,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // ──────────────────────────────────────────────
   async leaveGroup(groupId: string, marketId: string) {
     const group = await this.groupRepo.findOne({
-      where: { id: groupId },
+      where: { id: groupId, isDeleted: false },
       relations: { markets: true },
     });
     if (!group) throw new NotFoundException('Group not found');
@@ -327,7 +327,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
     }
 
     const group = await this.groupRepo.findOne({
-      where: { id: groupId },
+      where: { id: groupId, isDeleted: false },
       relations: { markets: true },
     });
     if (!group) throw new NotFoundException('Group not found');
@@ -346,7 +346,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
   // ──────────────────────────────────────────────
   private async validateSupCategory(supCategoryId?: string | null) {
     if (!supCategoryId) return;
-    const exists = await this.supCategoryRepo.exist({ where: { id: supCategoryId } });
+    const exists = await this.supCategoryRepo.exist({ where: { id: supCategoryId, isDeleted: false } });
     if (!exists) throw new NotFoundException('SupCategory not found');
   }
 }

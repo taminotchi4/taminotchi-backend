@@ -32,7 +32,7 @@ export class CommentChatService {
 
     // ── Comment mavjudligini tekshirish ────────────
     async getComment(commentId: string): Promise<CommentEntity> {
-        const comment = await this.commentRepo.findOne({ where: { id: commentId } });
+        const comment = await this.commentRepo.findOne({ where: { id: commentId, isDeleted: false } });
         if (!comment) throw new NotFoundException('Comment not found');
         return comment;
     }
@@ -80,7 +80,7 @@ export class CommentChatService {
         limit: number = 30,
     ): Promise<{ data: MessageEntity[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.msgRepo.findAndCount({
-            where: { commentId },
+            where: { commentId, isDeleted: false },
             order: { createdAt: 'ASC' },
             skip: (page - 1) * limit,
             take: limit,

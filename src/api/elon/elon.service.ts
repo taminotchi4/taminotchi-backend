@@ -205,6 +205,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         category: true,
         supCategory: true,
         groups: true,
+        client: true,
         comment: true,
       } as any,
       where: { isDeleted: false },
@@ -270,6 +271,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         category: true,
         supCategory: true,
         groups: true,
+        client: true,
         comment: true,
       } as any,
     });

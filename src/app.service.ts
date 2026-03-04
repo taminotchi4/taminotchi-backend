@@ -103,7 +103,7 @@ export class Application {
       forbidNonWhitelisted: true,
       transform: true,
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-      transformOptions: { enableImplicitConversion: true },
+      transformOptions: { enableImplicitConversion: false },
       validationError: { target: false },
       stopAtFirstError: true,
       // prod’da ham foydali bo‘lishi uchun: message list qoladi (xavfsiz)

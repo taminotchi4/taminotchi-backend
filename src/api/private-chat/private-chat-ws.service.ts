@@ -36,6 +36,7 @@ export class PrivateChatWsService {
             const rows = await this.chatRepo
                 .createQueryBuilder('c')
                 .select('c.id', 'id')
+                .andWhere('c.isDeleted = false')
                 .getRawMany<{ id: string }>();
             return rows.map((r) => r.id);
         }
@@ -44,6 +45,7 @@ export class PrivateChatWsService {
             .createQueryBuilder('c')
             .select('c.id', 'id')
             .where('c.clientId = :userId OR c.marketId = :userId', { userId })
+            .andWhere('c.isDeleted = false')
             .getRawMany<{ id: string }>();
 
         return rows.map((r) => r.id);
@@ -51,7 +53,7 @@ export class PrivateChatWsService {
 
     // ── Chat mavjudligini va foydalanuvchi ishtirokini tekshirish
     async verifyParticipant(privateChatId: string, userId: string, role: string): Promise<void> {
-        const chat = await this.chatRepo.findOne({ where: { id: privateChatId } });
+        const chat = await this.chatRepo.findOne({ where: { id: privateChatId, isDeleted: false } });
         if (!chat) throw new BadRequestException('Private chat not found');
 
         const isAdmin = role === UserRole.ADMIN || role === UserRole.SUPERADMIN;

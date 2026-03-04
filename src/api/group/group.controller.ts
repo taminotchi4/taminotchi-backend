@@ -32,7 +32,7 @@ import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
 import { UserRole } from 'src/common/enum/index.enum';
 import { buildMulterOptions, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
-const AllRoles = [UserRole.MARKET, UserRole.ADMIN, UserRole.SUPERADMIN];
+const AllRoles = [UserRole.MARKET, UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN];
 
 @ApiTags('Group')
 @ApiBearerAuth()

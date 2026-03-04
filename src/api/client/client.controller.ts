@@ -89,18 +89,28 @@ export class ClientController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.CLIENT)
   @Patch('me/profile')
+  @ApiOperation({ summary: 'Update client profile' })
+  @ApiBody({ type: UpdateClientDto })
+  updateMe(
+    @Req() req: any,
+    @Body() dto: UpdateClientDto,
+  ) {
+    return this.clientService.updateMe(req.user.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @Post('me/upload-photo')
+  @ApiOperation({ summary: 'Upload client photo' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        fullName: { type: 'string' },
-        username: { type: 'string' },
-        phoneNumber: { type: 'string' },
-        password: { type: 'string' },
-        language: { type: 'string', enum: Object.values(LanguageType) },
         photo: { type: 'string', format: 'binary' },
       },
+      required: ['photo'],
     },
   })
   @UseInterceptors(
@@ -109,15 +119,20 @@ export class ClientController {
       buildMulterOptions({ folder: 'client', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
-  updateMe(
+  uploadPhoto(
     @Req() req: any,
-    @Body() dto: UpdateClientDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (file) {
-      dto.photoPath = toPublicPath('client', file.filename);
-    }
-    return this.clientService.updateMe(req.user.id, dto);
+    return this.clientService.uploadPhoto(req.user.id, file);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @Delete('me/delete-photo')
+  @ApiOperation({ summary: 'Delete client photo' })
+  deletePhoto(@Req() req: any) {
+    return this.clientService.deletePhoto(req.user.id);
   }
 
   @ApiBearerAuth()

@@ -64,7 +64,4 @@ export class UpdateMarketDto extends PartialType(CreateMarketDto) {
     @IsBoolean()
     isActive?: boolean;
 
-    @ApiPropertyOptional({ type: 'string', format: 'binary' })
-    @IsOptional()
-    photo?: any;
 }

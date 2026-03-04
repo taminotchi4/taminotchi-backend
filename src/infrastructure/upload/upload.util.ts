@@ -72,3 +72,19 @@ export function toPublicPath(folder: string, filename: string) {
     const clean = folder.replace(/^\//, '');
     return `/uploads/${clean}/${filename}`;
 }
+
+/**
+ * Safely delete a file from the filesystem
+ */
+export async function deleteFile(publicPath: string) {
+    if (!publicPath) return;
+    try {
+        const diskPath = join(process.cwd(), publicPath.replace(/^\/+/, ''));
+        if (existsSync(diskPath)) {
+            const { unlink } = await import('fs/promises');
+            await unlink(diskPath);
+        }
+    } catch (error) {
+        console.error(`Error deleting file: ${publicPath}`, error);
+    }
+}

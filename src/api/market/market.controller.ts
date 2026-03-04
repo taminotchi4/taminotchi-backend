@@ -102,19 +102,28 @@ export class MarketController {
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.MARKET)
   @Patch('me/profile')
+  @ApiOperation({ summary: 'Update market profile' })
+  @ApiBody({ type: UpdateMarketDto })
+  updateMe(
+    @Req() req: any,
+    @Body() dto: UpdateMarketDto,
+  ) {
+    return this.marketService.updateMe(req.user.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.MARKET)
+  @Post('me/upload-photo')
+  @ApiOperation({ summary: 'Upload market photo' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        username: { type: 'string' },
-        phoneNumber: { type: 'string' },
-        password: { type: 'string' },
-        adressId: { type: 'string', format: 'uuid' },
-        language: { type: 'string', enum: Object.values(LanguageType) },
         photo: { type: 'string', format: 'binary' },
       },
+      required: ['photo'],
     },
   })
   @UseInterceptors(
@@ -123,15 +132,20 @@ export class MarketController {
       buildMulterOptions({ folder: 'market', allowed: 'image', maxSizeMb: 10 }),
     ),
   )
-  updateMe(
+  uploadPhoto(
     @Req() req: any,
-    @Body() dto: UpdateMarketDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (file) {
-      dto.photoPath = toPublicPath('market', file.filename);
-    }
-    return this.marketService.updateMe(req.user.id, dto);
+    return this.marketService.uploadPhoto(req.user.id, file);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.MARKET)
+  @Delete('me/delete-photo')
+  @ApiOperation({ summary: 'Delete market photo' })
+  deletePhoto(@Req() req: any) {
+    return this.marketService.deletePhoto(req.user.id);
   }
 
   @ApiBearerAuth()

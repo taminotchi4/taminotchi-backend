@@ -65,7 +65,4 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
     @IsBoolean()
     isActive?: boolean;
 
-    @ApiPropertyOptional({ type: 'string', format: 'binary' })
-    @IsOptional()
-    photo?: any;
 }

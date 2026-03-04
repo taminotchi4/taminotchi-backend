@@ -24,6 +24,7 @@ import { MessageEntity } from 'src/core/entity/message.entity';
 import { CommentEntity } from 'src/core/entity/comment.entity';
 import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
 import { UserRole } from 'src/common/enum/index.enum';
+import { deleteFile, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
 @Injectable()
 export class ClientService extends BaseService<CreateClientDto, UpdateClientDto, ClientEntity> {
@@ -242,10 +243,37 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     if (dto.fullName !== undefined) client.fullName = dto.fullName;
     if (dto.language !== undefined) client.language = dto.language;
-    if (dto.photoPath !== undefined) client.photoPath = dto.photoPath;
 
     const saved = await this.repo.save(client);
     return successRes(this.safe(saved));
+  }
+
+  async uploadPhoto(clientId: string, file: Express.Multer.File) {
+    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    if (!client) throw new NotFoundException('Client not found');
+
+    // Eski rasmni o'chirish
+    if (client.photoPath) {
+      await deleteFile(client.photoPath);
+    }
+
+    client.photoPath = toPublicPath('client', file.filename);
+    const saved = await this.repo.save(client);
+
+    return successRes(this.safe(saved));
+  }
+
+  async deletePhoto(clientId: string) {
+    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    if (!client) throw new NotFoundException('Client not found');
+
+    if (client.photoPath) {
+      await deleteFile(client.photoPath);
+      client.photoPath = null;
+      await this.repo.save(client);
+    }
+
+    return successRes(this.safe(client));
   }
 
   async deleteWithRole(

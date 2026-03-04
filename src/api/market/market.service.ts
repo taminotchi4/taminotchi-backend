@@ -9,6 +9,7 @@ import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
 import { CryptoService } from 'src/infrastructure/crypto/crypto.service';
 import { AuthCommonService } from 'src/common/auth/auth-common.service';
+import { deleteFile, toPublicPath } from 'src/infrastructure/upload/upload.util';
 
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { CreateMarketDto } from './dto/create-market.dto';
@@ -288,15 +289,43 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       market.password = await this.crypto.encrypt(dto.password);
     }
 
-    if (dto.photoPath !== undefined) market.photoPath = dto.photoPath ?? null;
     if (dto.adressId !== undefined) {
       await this.ensureAdressExists(dto.adressId);
       market.adressId = dto.adressId ?? null;
     }
+
     if (dto.language !== undefined) market.language = dto.language;
 
     const saved = await this.repo.save(market);
     return successRes(this.safe(saved));
+  }
+
+  async uploadPhoto(marketId: string, file: Express.Multer.File) {
+    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    if (!market) throw new NotFoundException('Market not found');
+
+    // Eski rasmni o'chirish
+    if (market.photoPath) {
+      await deleteFile(market.photoPath);
+    }
+
+    market.photoPath = toPublicPath('market', file.filename);
+    const saved = await this.repo.save(market);
+
+    return successRes(this.safe(saved));
+  }
+
+  async deletePhoto(marketId: string) {
+    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    if (!market) throw new NotFoundException('Market not found');
+
+    if (market.photoPath) {
+      await deleteFile(market.photoPath);
+      market.photoPath = null;
+      await this.repo.save(market);
+    }
+
+    return successRes(this.safe(market));
   }
 
   async deleteWithRole(

@@ -210,6 +210,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
         category: true,
         supCategory: true,
         groups: true,
+        client: true,
       } as any,
       order: { createdAt: 'DESC' } as any,
     });

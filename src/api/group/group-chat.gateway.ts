@@ -232,6 +232,9 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         const header = client.handshake.headers?.authorization as string | undefined;
         if (header?.startsWith('Bearer ')) return header.slice(7);
 
+        const queryToken = client.handshake.query?.token;
+        if (queryToken) return queryToken as string;
+
         return null;
     }
 

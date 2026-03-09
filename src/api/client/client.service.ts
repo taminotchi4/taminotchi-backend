@@ -33,6 +33,8 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     protected readonly clientRepo: Repository<ClientEntity>,
     @InjectRepository(ElonEntity)
     private readonly elonRepo: Repository<ElonEntity>,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepo: Repository<CommentEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
@@ -214,6 +216,36 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
       } as any,
       order: { createdAt: 'DESC' } as any,
     });
+
+    const commentIds = data
+      .map((e) => e.commentId)
+      .filter((id): id is string => Boolean(id));
+
+    const messageCountByComment = new Map<string, number>();
+    if (commentIds.length) {
+      const rows = await this.commentRepo
+        .createQueryBuilder('c')
+        .leftJoin('c.messages', 'm')
+        .select('c.id', 'id')
+        .addSelect('COUNT(m.id)', 'messageCount')
+        .where('c.id IN (:...ids)', { ids: commentIds })
+        .groupBy('c.id')
+        .getRawMany<{ id: string; messageCount: string }>();
+
+      for (const row of rows) {
+        messageCountByComment.set(row.id, Number(row.messageCount));
+      }
+    }
+
+    for (const elon of data as any[]) {
+      if (elon.comment?.id) {
+        elon.comment = {
+          ...elon.comment,
+          messageCount: messageCountByComment.get(elon.comment.id) ?? 0,
+        };
+      }
+    }
+
     return successRes(data);
   }
 

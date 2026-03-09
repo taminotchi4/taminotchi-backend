@@ -13,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MarketService } from './market.service';
 import { CreateMarketDto } from './dto/create-market.dto';
@@ -36,6 +37,7 @@ export class MarketController {
 
   @ApiOperation({ summary: 'Market login' })
   @ApiBody({ type: MarketLoginDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: MarketLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.marketService.marketSignIn(dto, res);
@@ -43,6 +45,7 @@ export class MarketController {
 
   @ApiOperation({ summary: 'Market register - request OTP' })
   @ApiBody({ type: RequestMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/request-otp')
   requestOtp(@Body() dto: RequestMarketOtpDto) {
     return this.marketService.requestRegisterOtp(dto);
@@ -62,6 +65,7 @@ export class MarketController {
 
   @ApiOperation({ summary: 'Market register - verify OTP' })
   @ApiBody({ type: VerifyMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/verify-otp')
   verifyOtp(@Body() dto: VerifyMarketOtpDto) {
     return this.marketService.verifyRegisterOtp(dto);
@@ -69,6 +73,7 @@ export class MarketController {
 
   @ApiOperation({ summary: 'Market register - complete profile' })
   @ApiBody({ type: RegisterMarketDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/complete')
   completeRegister(@Body() dto: RegisterMarketDto) {
     return this.marketService.completeRegister(dto);

@@ -10,6 +10,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -35,6 +36,7 @@ export class AdminController {
 
   @ApiOperation({ summary: 'Admin login' })
   @ApiBody({ type: AdminLoginDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.adminService.adminSignIn(dto, res);

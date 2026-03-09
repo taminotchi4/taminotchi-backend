@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { CleanupModule } from './infrastructure/cleanup/cleanup.module';
 
 import { config } from './config';
@@ -112,8 +114,27 @@ import { NotificationModule } from './api/notification/notification.module';
     NotificationModule,
     ScheduleModule.forRoot(),
     CleanupModule,
+
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: 60,
+      },
+      {
+        name: 'sensitive',
+        ttl: 60000,
+        limit: 5,
+      },
+    ]),
   ],
-  providers: [LanguageMiddleware],
+  providers: [
+    LanguageMiddleware,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

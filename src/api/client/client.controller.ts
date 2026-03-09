@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -23,6 +24,7 @@ export class ClientController {
 
   @ApiOperation({ summary: 'Client login' })
   @ApiBody({ type: ClientLoginDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: ClientLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.clientService.clientSignIn(dto, res);
@@ -30,6 +32,7 @@ export class ClientController {
 
   @ApiOperation({ summary: 'Client register - request OTP' })
   @ApiBody({ type: RequestClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/request-otp')
   requestOtp(@Body() dto: RequestClientOtpDto) {
     return this.clientService.requestRegisterOtp(dto);
@@ -49,6 +52,7 @@ export class ClientController {
 
   @ApiOperation({ summary: 'Client register - verify OTP' })
   @ApiBody({ type: VerifyClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/verify-otp')
   verifyOtp(@Body() dto: VerifyClientOtpDto) {
     return this.clientService.verifyRegisterOtp(dto);
@@ -56,6 +60,7 @@ export class ClientController {
 
   @ApiOperation({ summary: 'Client register - complete profile' })
   @ApiBody({ type: RegisterClientDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('register/complete')
   completeRegister(@Body() dto: RegisterClientDto) {
     return this.clientService.completeRegister(dto);

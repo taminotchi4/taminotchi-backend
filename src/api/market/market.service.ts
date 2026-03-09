@@ -36,6 +36,8 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     private readonly adressRepo: Repository<AdressEntity>,
     @InjectRepository(ProductEntity)
     private readonly productRepo: Repository<ProductEntity>,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepo: Repository<CommentEntity>,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
@@ -253,9 +255,40 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
         comment: true,
         category: true,
         supCategory: true,
+        market: true,
       } as any,
       order: { createdAt: 'DESC' } as any,
     });
+
+    const commentIds = data
+      .map((p) => p.commentId)
+      .filter((id): id is string => Boolean(id));
+
+    const messageCountByComment = new Map<string, number>();
+    if (commentIds.length) {
+      const rows = await this.commentRepo
+        .createQueryBuilder('c')
+        .leftJoin('c.messages', 'm')
+        .select('c.id', 'id')
+        .addSelect('COUNT(m.id)', 'messageCount')
+        .where('c.id IN (:...ids)', { ids: commentIds })
+        .groupBy('c.id')
+        .getRawMany<{ id: string; messageCount: string }>();
+
+      for (const row of rows) {
+        messageCountByComment.set(row.id, Number(row.messageCount));
+      }
+    }
+
+    for (const prod of data as any[]) {
+      if (prod.comment?.id) {
+        prod.comment = {
+          ...prod.comment,
+          messageCount: messageCountByComment.get(prod.comment.id) ?? 0,
+        };
+      }
+    }
+
     return successRes(data);
   }
 

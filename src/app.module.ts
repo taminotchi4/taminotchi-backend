@@ -119,7 +119,7 @@ import { NotificationModule } from './api/notification/notification.module';
       {
         name: 'default',
         ttl: 60000,
-        limit: 60,
+        limit: 6000,
       },
       {
         name: 'sensitive',
@@ -130,10 +130,7 @@ import { NotificationModule } from './api/notification/notification.module';
   ],
   providers: [
     LanguageMiddleware,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    
   ],
 })
 export class AppModule implements NestModule {

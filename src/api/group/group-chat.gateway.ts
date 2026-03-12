@@ -14,7 +14,7 @@ import { GroupChatService } from './group-chat.service';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
-import { NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
+import { MessageStatus, NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
 
 /**
  * GROUP CHAT GATEWAY
@@ -75,6 +75,9 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
                 await client.join(`group:${gid}`);
             }
 
+            // Avtomatik DELIVERED statusi
+            await this.groupChatService.markMessagesAsDelivered(user.id, user.role);
+
             console.log(`[GroupChat] +connect  ${user.id} (${user.role}) | rooms: ${groupIds.length}`);
         } catch {
             this.reject(client, 'Invalid or expired token');
@@ -103,6 +106,16 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         if (!isMember) throw new WsException('You are not a member of this group');
 
         await client.join(`group:${groupId}`);
+
+        // Avtomatik o'qilgan deb belgilash
+        await this.groupChatService.markMessagesAsSeen(groupId, user.id);
+
+        // Boshqalarga xabar berish
+        client.to(`group:${groupId}`).emit('messages_seen', {
+            groupId,
+            readerId: user.id
+        });
+
         client.emit('joined', { groupId });
     }
 

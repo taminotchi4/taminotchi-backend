@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import { CommentChatService } from './comment-chat.service';
+import { MessageStatus } from 'src/common/enum/index.enum';
 import { SendCommentMessageDto } from './dto/send-comment-message.dto';
 
 /**
@@ -67,6 +68,9 @@ export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconn
             const user = await this.commentChatService.verifyToken(token);
             client.data.user = user;
 
+            // Avtomatik DELIVERED statusi
+            await this.commentChatService.markMessagesAsDelivered(user.id);
+
             console.log(`[CommentChat] +connect  ${user.id} (${user.role})`);
         } catch {
             this.reject(client, 'Invalid or expired token');
@@ -90,6 +94,17 @@ export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconn
         await this.commentChatService.getComment(data.commentId);
 
         await client.join(`comment:${data.commentId}`);
+
+        // Avtomatik o'qilgan deb belgilash
+        const user = this.getUser(client);
+        await this.commentChatService.markMessagesAsSeen(data.commentId, user.id);
+
+        // Boshqalarga xabar berish
+        client.to(`comment:${data.commentId}`).emit('messages_seen', {
+            commentId: data.commentId,
+            readerId: user.id
+        });
+
         client.emit('joined', { commentId: data.commentId });
     }
 

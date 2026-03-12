@@ -7,7 +7,7 @@ import { MessageEntity } from 'src/core/entity/message.entity';
 import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
 
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
-import { MessageType, UserRole } from 'src/common/enum/index.enum';
+import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
 import { config } from 'src/config';
 import { IToken } from 'src/infrastructure/token/interface';
 
@@ -116,5 +116,29 @@ export class PrivateChatWsService {
         });
 
         return { data, total, page, limit };
+    }
+
+    // ── Chat xabarlarini o'qilgan deb belgilash ───
+    async markMessagesAsSeen(privateChatId: string, readerId: string): Promise<void> {
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.SEEN })
+            .where('privateChatId = :privateChatId', { privateChatId })
+            .andWhere('senderId != :readerId', { readerId })
+            .andWhere('status != :status', { status: MessageStatus.SEEN })
+            .execute();
+    }
+
+    // ── Xabarlarni yetkazildi deb belgilash (ulangan paytda) ──
+    async markMessagesAsDelivered(userId: string): Promise<void> {
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.DELIVERED })
+            .where('privateChatId IS NOT NULL')
+            .andWhere('senderId != :userId', { userId })
+            .andWhere('status = :status', { status: MessageStatus.SENT })
+            .execute();
     }
 }

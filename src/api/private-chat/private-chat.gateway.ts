@@ -14,7 +14,7 @@ import { PrivateChatWsService } from './private-chat-ws.service';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
-import { NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
+import { MessageStatus, NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
 
 /**
  * PRIVATE CHAT GATEWAY
@@ -75,6 +75,9 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
                 await client.join(`private:${chatId}`);
             }
 
+            // Avtomatik DELIVERED statusi
+            await this.privateChatWsService.markMessagesAsDelivered(user.id);
+
             console.log(`[PrivateChat] +connect  ${user.id} (${user.role}) | chats: ${chatIds.length}`);
         } catch {
             this.reject(client, 'Invalid or expired token');
@@ -103,6 +106,16 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
         );
 
         await client.join(`private:${data.privateChatId}`);
+
+        // Avtomatik o'qilgan deb belgilash
+        await this.privateChatWsService.markMessagesAsSeen(data.privateChatId, user.id);
+
+        // Boshqalarga xabar berish (status o'zgardi)
+        client.to(`private:${data.privateChatId}`).emit('messages_seen', {
+            privateChatId: data.privateChatId,
+            readerId: user.id
+        });
+
         client.emit('joined', { privateChatId: data.privateChatId });
     }
 

@@ -68,7 +68,7 @@ export class MessageEntity extends BaseEntity {
     @Column({ type: 'text', nullable: true })
     text: string | null;
 
-    @Column({ type: 'enum', enum: MessageStatus, default: MessageStatus.SENDING })
+    @Column({ type: 'enum', enum: MessageStatus, default: MessageStatus.SENT })
     status: MessageStatus;
 
     @Column({ type: 'varchar', nullable: true })
@@ -80,10 +80,10 @@ export class MessageEntity extends BaseEntity {
     replyToId: string | null;
 
     // Kimdan yuborildi (polymorphic)
-    @Column({ type: 'enum', enum: UserRole })
-    senderType: UserRole;
+    @Column({ type: 'enum', enum: UserRole, nullable: true })
+    senderType: UserRole | null;
 
     @Index()
-    @Column({ type: 'uuid' })
-    senderId: string;
+    @Column({ type: 'uuid', nullable: true })
+    senderId: string | null;
 }

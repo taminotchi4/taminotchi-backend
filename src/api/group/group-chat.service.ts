@@ -7,7 +7,7 @@ import { MessageEntity } from 'src/core/entity/message.entity';
 import { GroupEntity } from 'src/core/entity/group.entity';
 
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
-import { MessageType, UserRole } from 'src/common/enum/index.enum';
+import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
 import { config } from 'src/config';
 import { IToken } from 'src/infrastructure/token/interface';
 
@@ -145,5 +145,32 @@ export class GroupChatService {
         });
 
         return { data: data.reverse(), total, page, limit };
+    }
+
+    // ── Guruh xabarlarini o'qilgan deb belgilash ───
+    async markMessagesAsSeen(groupId: string, readerId: string): Promise<void> {
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.SEEN })
+            .where('groupId = :groupId', { groupId })
+            .andWhere('senderId != :readerId', { readerId })
+            .andWhere('status != :status', { status: MessageStatus.SEEN })
+            .execute();
+    }
+
+    // ── Guruh xabarlarini yetkazildi deb belgilash ───
+    async markMessagesAsDelivered(userId: string, role: string): Promise<void> {
+        const groupIds = await this.getUserGroupIds(userId, role);
+        if (groupIds.length === 0) return;
+
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.DELIVERED })
+            .where('groupId IN (:...groupIds)', { groupIds })
+            .andWhere('senderId != :userId', { userId })
+            .andWhere('status = :status', { status: MessageStatus.SENT })
+            .execute();
     }
 }

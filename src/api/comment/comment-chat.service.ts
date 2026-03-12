@@ -7,7 +7,7 @@ import { MessageEntity } from 'src/core/entity/message.entity';
 import { CommentEntity } from 'src/core/entity/comment.entity';
 
 import { SendCommentMessageDto } from './dto/send-comment-message.dto';
-import { MessageType, UserRole } from 'src/common/enum/index.enum';
+import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
 import { config } from 'src/config';
 import { IToken } from 'src/infrastructure/token/interface';
 
@@ -87,5 +87,29 @@ export class CommentChatService {
         });
 
         return { data, total, page, limit };
+    }
+
+    // ── Comment xabarlarini o'qilgan deb belgilash ───
+    async markMessagesAsSeen(commentId: string, readerId: string): Promise<void> {
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.SEEN })
+            .where('commentId = :commentId', { commentId })
+            .andWhere('senderId != :readerId', { readerId })
+            .andWhere('status != :status', { status: MessageStatus.SEEN })
+            .execute();
+    }
+
+    // ── Comment xabarlarini yetkazildi deb belgilash ───
+    async markMessagesAsDelivered(userId: string): Promise<void> {
+        await this.msgRepo
+            .createQueryBuilder()
+            .update(MessageEntity)
+            .set({ status: MessageStatus.DELIVERED })
+            .where('commentId IS NOT NULL')
+            .andWhere('senderId != :userId', { userId })
+            .andWhere('status = :status', { status: MessageStatus.SENT })
+            .execute();
     }
 }

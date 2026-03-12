@@ -76,21 +76,27 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
       const whereConditions: any[] = [];
       if (savedElon.categoryId) {
         // Asosiy kategoriya guruhini topish (supCategoryId null bo'lishi shart)
-        whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: IsNull() });
+        whereConditions.push({ categoryId: savedElon.categoryId, supCategoryId: IsNull(), isDeleted: false, });
       }
       if (savedElon.supCategoryId) {
         // Subkategoriya guruhini topish
-        whereConditions.push({ supCategoryId: savedElon.supCategoryId });
+        whereConditions.push({ supCategoryId: savedElon.supCategoryId, isDeleted: false, });
       }
 
+      let groups: GroupEntity[] = [];
+
       if (whereConditions.length) {
-        const autoGroups = await groupRepo.find({
-          where: whereConditions.map((cond) => ({ ...cond, isDeleted: false })),
+        groups = await groupRepo.find({
+          where: whereConditions
         });
-        if (autoGroups.length) {
-          savedElon.groups = autoGroups;
-          await eRepo.save(savedElon);
-        }
+      }
+
+      if (groups.length) {
+        await manager
+          .createQueryBuilder()
+          .relation(ElonEntity, 'groups')
+          .of(savedElon.id)
+          .add(groups.map((g) => g.id));
       }
 
       const comment = cRepo.create({
@@ -121,7 +127,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
 
     // Tranzaksiya yakunlangandan keyin enrich qilamiz — photolar commit bo'lgan
     const saved = await this.elonRepo.findOne({
-      where: { id: finalElonId } as any,
+      where: { id: finalElonId },
       relations: { category: true, supCategory: true, groups: true, comment: true } as any,
     });
 
@@ -142,7 +148,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
             members.map(async ({ id: memberId }) => {
               const notif = await this.notifService.create({
                 userId: memberId,
-                type: NotificationType.ELON_COMMENT,
+                type: NotificationType.NEW_ELON,
                 referenceId: finalElonId,
                 referenceType: NotificationRefType.GROUP,
                 preview: saved.text?.slice(0, 100) ?? null,

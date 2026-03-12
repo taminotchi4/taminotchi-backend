@@ -38,6 +38,7 @@ export enum NotificationType {
     NEW_MESSAGE = 'new_message',   // yangi xabar keldi
     GROUP_JOIN = 'group_join',    // guruhga a'zo qo'shildi
     ELON_COMMENT = 'elon_comment',  // eloningizga komment yozildi
+    NEW_ELON = 'new_elon', // yangi elon qo'shildi
 }
 
 export enum NotificationRefType {

@@ -128,6 +128,7 @@ export class GroupService extends BaseService<CreateGroupDto, UpdateGroupDto, Gr
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.supCategory', 'sc')
       .leftJoinAndSelect('g.category', 'cat')
+      .leftJoinAndSelect('g.elons', 'elons')
       .loadRelationCountAndMap('g.membersCount', 'g.markets')
       .where('g.id = :id', { id })
       .andWhere('g.isDeleted = false')

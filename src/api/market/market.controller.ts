@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -14,7 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { MarketService } from './market.service';
 import { CreateMarketDto } from './dto/create-market.dto';
 import { UpdateMarketDto } from './dto/update-market.dto';
@@ -81,10 +82,12 @@ export class MarketController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)
+  @ApiOperation({ summary: 'Get all markets, optionally filter by username (partial match)' })
+  @ApiQuery({ name: 'username', required: false, description: 'Partial username search (case-insensitive)' })
   @Get()
-  findAll() {
-    return this.marketService.findAll();
+  findAll(@Query('username') username?: string) {
+    return this.marketService.findAllByUsername(username);
   }
 
   @ApiBearerAuth()

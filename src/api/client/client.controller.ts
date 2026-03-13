@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -68,10 +68,12 @@ export class ClientController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)
+  @ApiOperation({ summary: 'Get all clients, optionally filter by username (partial match)' })
+  @ApiQuery({ name: 'username', required: false, description: 'Partial username search (case-insensitive)' })
   @Get()
-  findAll() {
-    return this.clientService.findAll();
+  findAll(@Query('username') username?: string) {
+    return this.clientService.findAllByUsername(username);
   }
 
   @ApiBearerAuth()

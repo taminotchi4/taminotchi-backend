@@ -5,11 +5,16 @@ import { JwtService } from '@nestjs/jwt';
 
 import { MessageEntity } from 'src/core/entity/message.entity';
 import { CommentEntity } from 'src/core/entity/comment.entity';
+import { ClientEntity } from 'src/core/entity/client.entity';
+import { MarketEntity } from 'src/core/entity/market.entity';
+import { AdminEntity } from 'src/core/entity/admin.entity';
 
 import { SendCommentMessageDto } from './dto/send-comment-message.dto';
 import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
 import { config } from 'src/config';
 import { IToken } from 'src/infrastructure/token/interface';
+
+export type MessageWithSender = MessageEntity & { sender: object | null };
 
 @Injectable()
 export class CommentChatService {
@@ -19,6 +24,15 @@ export class CommentChatService {
 
         @InjectRepository(CommentEntity)
         private readonly commentRepo: Repository<CommentEntity>,
+
+        @InjectRepository(ClientEntity)
+        private readonly clientRepo: Repository<ClientEntity>,
+
+        @InjectRepository(MarketEntity)
+        private readonly marketRepo: Repository<MarketEntity>,
+
+        @InjectRepository(AdminEntity)
+        private readonly adminRepo: Repository<AdminEntity>,
 
         private readonly jwt: JwtService,
     ) { }
@@ -37,12 +51,67 @@ export class CommentChatService {
         return comment;
     }
 
+    // ── Sender ma'lumotlarini olish (polymorphic) ──
+    private async getSender(senderId: string | null, senderType: UserRole | null): Promise<object | null> {
+        if (!senderId || !senderType) return null;
+
+        if (senderType === UserRole.CLIENT) {
+            const client = await this.clientRepo.findOne({ where: { id: senderId } });
+            if (!client) return null;
+            return {
+                id: client.id,
+                fullName: client.fullName,
+                username: client.username,
+                phoneNumber: client.phoneNumber,
+                photoPath: client.photoPath,
+                role: client.role,
+            };
+        }
+
+        if (senderType === UserRole.MARKET) {
+            const market = await this.marketRepo.findOne({ where: { id: senderId } });
+            if (!market) return null;
+            return {
+                id: market.id,
+                name: market.name,
+                username: market.username,
+                phoneNumber: market.phoneNumber,
+                photoPath: market.photoPath,
+                role: market.role,
+            };
+        }
+
+        if (senderType === UserRole.ADMIN || senderType === UserRole.SUPERADMIN) {
+            const admin = await this.adminRepo.findOne({ where: { id: senderId } });
+            if (!admin) return null;
+            return {
+                id: admin.id,
+                username: admin.username,
+                phoneNumber: admin.phoneNumber,
+                role: admin.role,
+            };
+        }
+
+        return null;
+    }
+
+    // ── Message ga sender qo'shish ─────────────────
+    private async enrichWithSender(message: MessageEntity): Promise<MessageWithSender> {
+        const sender = await this.getSender(message.senderId, message.senderType);
+        return Object.assign(message, { sender });
+    }
+
+    // ── Batch enrichment (getHistory uchun) ───────
+    private async enrichMany(messages: MessageEntity[]): Promise<MessageWithSender[]> {
+        return Promise.all(messages.map((m) => this.enrichWithSender(m)));
+    }
+
     // ── Xabar saqlash (scope = comment) ───────────
     async saveMessage(
         dto: SendCommentMessageDto,
         senderId: string,
         senderRole: string,
-    ): Promise<MessageEntity> {
+    ): Promise<MessageWithSender> {
         if (dto.type === MessageType.TEXT && !dto.text?.trim()) {
             throw new BadRequestException('Text message cannot be empty');
         }
@@ -70,7 +139,8 @@ export class CommentChatService {
             replyToId: dto.replyToId ?? null,
         });
 
-        return this.msgRepo.save(msg);
+        const saved = await this.msgRepo.save(msg);
+        return this.enrichWithSender(saved);
     }
 
     // ── Xabarlar tarixi (pagination) ──────────────
@@ -78,7 +148,7 @@ export class CommentChatService {
         commentId: string,
         page: number = 1,
         limit: number = 30,
-    ): Promise<{ data: MessageEntity[]; total: number; page: number; limit: number }> {
+    ): Promise<{ data: MessageWithSender[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.msgRepo.findAndCount({
             where: { commentId, isDeleted: false },
             order: { createdAt: 'ASC' },
@@ -86,7 +156,7 @@ export class CommentChatService {
             take: limit,
         });
 
-        return { data, total, page, limit };
+        return { data: await this.enrichMany(data), total, page, limit };
     }
 
     // ── Comment xabarlarini o'qilgan deb belgilash ───

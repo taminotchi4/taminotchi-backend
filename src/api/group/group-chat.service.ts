@@ -5,11 +5,16 @@ import { JwtService } from '@nestjs/jwt';
 
 import { MessageEntity } from 'src/core/entity/message.entity';
 import { GroupEntity } from 'src/core/entity/group.entity';
+import { ClientEntity } from 'src/core/entity/client.entity';
+import { MarketEntity } from 'src/core/entity/market.entity';
+import { AdminEntity } from 'src/core/entity/admin.entity';
 
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
 import { config } from 'src/config';
 import { IToken } from 'src/infrastructure/token/interface';
+
+export type MessageWithSender = MessageEntity & { sender: object | null };
 
 @Injectable()
 export class GroupChatService {
@@ -19,6 +24,15 @@ export class GroupChatService {
 
         @InjectRepository(GroupEntity)
         private readonly groupRepo: Repository<GroupEntity>,
+
+        @InjectRepository(ClientEntity)
+        private readonly clientRepo: Repository<ClientEntity>,
+
+        @InjectRepository(MarketEntity)
+        private readonly marketRepo: Repository<MarketEntity>,
+
+        @InjectRepository(AdminEntity)
+        private readonly adminRepo: Repository<AdminEntity>,
 
         private readonly jwt: JwtService,
     ) { }
@@ -34,8 +48,6 @@ export class GroupChatService {
 
     // ─────────────────────────────────────────────────
     // Foydalanuvchi a'zo bo'lgan guruh IDlarini olish
-    // MARKET → group_market junction table orqali
-    // ADMIN/SUPERADMIN → barcha guruhlar
     // ─────────────────────────────────────────────────
     async getUserGroupIds(userId: string, role: string): Promise<string[]> {
         if (role === UserRole.MARKET) {
@@ -86,13 +98,70 @@ export class GroupChatService {
     }
 
     // ─────────────────────────────────────────────────
+    // Sender ma'lumotlarini olish (polymorphic)
+    // ─────────────────────────────────────────────────
+    private async getSender(senderId: string | null, senderType: UserRole | null): Promise<object | null> {
+        if (!senderId || !senderType) return null;
+
+        if (senderType === UserRole.CLIENT) {
+            const client = await this.clientRepo.findOne({ where: { id: senderId } });
+            if (!client) return null;
+            return {
+                id: client.id,
+                fullName: client.fullName,
+                username: client.username,
+                phoneNumber: client.phoneNumber,
+                photoPath: client.photoPath,
+                role: client.role,
+            };
+        }
+
+        if (senderType === UserRole.MARKET) {
+            const market = await this.marketRepo.findOne({ where: { id: senderId } });
+            if (!market) return null;
+            return {
+                id: market.id,
+                name: market.name,
+                username: market.username,
+                phoneNumber: market.phoneNumber,
+                photoPath: market.photoPath,
+                role: market.role,
+            };
+        }
+
+        if (senderType === UserRole.ADMIN || senderType === UserRole.SUPERADMIN) {
+            const admin = await this.adminRepo.findOne({ where: { id: senderId } });
+            if (!admin) return null;
+            return {
+                id: admin.id,
+                username: admin.username,
+                phoneNumber: admin.phoneNumber,
+                role: admin.role,
+            };
+        }
+
+        return null;
+    }
+
+    // ── Message ga sender qo'shish ─────────────────
+    private async enrichWithSender(message: MessageEntity): Promise<MessageWithSender> {
+        const sender = await this.getSender(message.senderId, message.senderType);
+        return Object.assign(message, { sender });
+    }
+
+    // ── Batch enrichment (getHistory uchun) ───────
+    private async enrichMany(messages: MessageEntity[]): Promise<MessageWithSender[]> {
+        return Promise.all(messages.map((m) => this.enrichWithSender(m)));
+    }
+
+    // ─────────────────────────────────────────────────
     // Xabarni DB ga saqlash (MessageEntity, scope: group)
     // ─────────────────────────────────────────────────
     async saveMessage(
         dto: SendGroupMessageDto,
         senderId: string,
         senderRole: string,
-    ): Promise<MessageEntity> {
+    ): Promise<MessageWithSender> {
         const group = await this.groupRepo.findOne({
             where: { id: dto.groupId, isDeleted: false },
         });
@@ -126,7 +195,8 @@ export class GroupChatService {
             replyToId: dto.replyToId ?? null,
         });
 
-        return this.msgRepo.save(msg);
+        const saved = await this.msgRepo.save(msg);
+        return this.enrichWithSender(saved);
     }
 
     // ─────────────────────────────────────────────────
@@ -136,7 +206,7 @@ export class GroupChatService {
         groupId: string,
         page: number = 1,
         limit: number = 30,
-    ): Promise<{ data: MessageEntity[]; total: number; page: number; limit: number }> {
+    ): Promise<{ data: MessageWithSender[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.msgRepo.findAndCount({
             where: { groupId },
             order: { createdAt: 'DESC' },
@@ -144,7 +214,7 @@ export class GroupChatService {
             take: limit,
         });
 
-        return { data: data.reverse(), total, page, limit };
+        return { data: await this.enrichMany(data.reverse()), total, page, limit };
     }
 
     // ── Guruh xabarlarini o'qilgan deb belgilash ───

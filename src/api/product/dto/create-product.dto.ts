@@ -38,6 +38,7 @@ export class CreateProductDto {
     price: string;
 
     @ApiProperty({ example: 10 })
+    @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : value))
     @IsNumber()
     @Min(0)
     amount: number;

@@ -8,6 +8,8 @@ import { GroupChatService } from './group-chat.service';
 
 import { GroupEntity } from 'src/core/entity/group.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
+import { ClientEntity } from 'src/core/entity/client.entity';
+import { AdminEntity } from 'src/core/entity/admin.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
@@ -18,6 +20,8 @@ import { NotificationModule } from '../notification/notification.module';
     TypeOrmModule.forFeature([
       GroupEntity,
       MarketEntity,
+      ClientEntity,
+      AdminEntity,
       SupCategoryEntity,
       CategoryEntity,
       MessageEntity,

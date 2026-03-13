@@ -9,11 +9,14 @@ import { CommentChatService } from './comment-chat.service';
 
 import { CommentEntity } from 'src/core/entity/comment.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
+import { ClientEntity } from 'src/core/entity/client.entity';
+import { MarketEntity } from 'src/core/entity/market.entity';
+import { AdminEntity } from 'src/core/entity/admin.entity';
 import { config } from 'src/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CommentEntity, MessageEntity]),
+    TypeOrmModule.forFeature([CommentEntity, MessageEntity, ClientEntity, MarketEntity, AdminEntity]),
     JwtModule.register({
       secret: config.TOKEN.ACCESS_TOKEN_KEY,
       signOptions: { expiresIn: config.TOKEN.ACCESS_TOKEN_TIME },

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { randomInt } from 'crypto';
 import type { Redis } from 'ioredis';
-import { In, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 
 import { BaseService } from 'src/infrastructure/base/base-service';
 import { ISuccess, successRes } from 'src/infrastructure/response/success.response';
@@ -52,6 +52,15 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   private safe(m: MarketEntity) {
     const { password, ...rest } = m as any;
     return rest;
+  }
+
+  async findAllByUsername(username?: string) {
+    const where: any = { isDeleted: false };
+    if (username?.trim()) {
+      where.username = ILike(`%${username.trim()}%`);
+    }
+    const data = await this.repo.find({ where, order: { createdAt: 'DESC' } as any });
+    return successRes(data.map((m) => this.safe(m)));
   }
 
   async marketSignIn(dto: MarketLoginDto, res: Response) {

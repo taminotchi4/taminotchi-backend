@@ -9,12 +9,15 @@ import { PrivateChatWsService } from './private-chat-ws.service';
 
 import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
+import { ClientEntity } from 'src/core/entity/client.entity';
+import { MarketEntity } from 'src/core/entity/market.entity';
+import { AdminEntity } from 'src/core/entity/admin.entity';
 import { NotificationModule } from '../notification/notification.module';
 import { config } from 'src/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PrivateChatEntity, MessageEntity]),
+    TypeOrmModule.forFeature([PrivateChatEntity, MessageEntity, ClientEntity, MarketEntity, AdminEntity]),
     JwtModule.register({
       secret: config.TOKEN.ACCESS_TOKEN_KEY,
       signOptions: { expiresIn: config.TOKEN.ACCESS_TOKEN_TIME },

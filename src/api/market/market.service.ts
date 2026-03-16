@@ -19,6 +19,7 @@ import { MarketLoginDto } from './dto/market-login.dto';
 import { RequestMarketOtpDto } from './dto/request-otp.dto';
 import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
+import { ResetMarketPasswordDto } from './dto/forgot-password.dto';
 import { AdressEntity } from 'src/core/entity/adress.entity';
 import { ProductEntity } from 'src/core/entity/product.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
@@ -463,5 +464,77 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
       return successRes({ deleted: true });
     });
+  }
+
+  // ─────────────────────────────────────────────
+  // FORGOT PASSWORD
+  // ─────────────────────────────────────────────
+
+  async requestForgotOtp(dto: RequestMarketOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    if (!user) throw new NotFoundException('Phone number not found');
+
+    const code = String(randomInt(100000, 1000000));
+    const hash = await this.crypto.encrypt(code);
+
+    await this.redis.set(
+      `otp:market:forgot:${phoneNumber}`,
+      JSON.stringify({ hash, attempts: 0 }),
+      'EX',
+      this.OTP_TTL_SEC,
+    );
+
+    return successRes({ otpCode: code });
+  }
+
+  async verifyForgotOtp(dto: VerifyMarketOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const key = `otp:market:forgot:${phoneNumber}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new BadRequestException('OTP expired');
+
+    const data = JSON.parse(raw) as { hash: string; attempts: number };
+    if (data.attempts >= this.OTP_MAX_ATTEMPTS) {
+      throw new BadRequestException('OTP attempts exceeded');
+    }
+
+    const ok = await this.crypto.decrypt(dto.code, data.hash);
+    if (!ok) {
+      const ttl = await this.redis.ttl(key);
+      const next = { hash: data.hash, attempts: data.attempts + 1 };
+      if (ttl > 0) {
+        await this.redis.set(key, JSON.stringify(next), 'EX', ttl);
+      } else {
+        await this.redis.set(key, JSON.stringify(next), 'EX', this.OTP_TTL_SEC);
+      }
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.redis.del(key);
+    await this.redis.set(
+      `otp:market:forgot:verified:${phoneNumber}`,
+      '1',
+      'EX',
+      this.VERIFY_TTL_SEC,
+    );
+
+    return successRes({ verified: true });
+  }
+
+  async resetPassword(dto: ResetMarketPasswordDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const verifyKey = `otp:market:forgot:verified:${phoneNumber}`;
+    const ok = await this.redis.get(verifyKey);
+    if (!ok) throw new BadRequestException('Phone not verified');
+
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    if (!user) throw new NotFoundException('Market not found');
+
+    user.password = await this.crypto.encrypt(dto.newPassword);
+    const saved = await this.repo.save(user);
+    await this.redis.del(verifyKey);
+
+    return successRes(this.safe(saved));
   }
 }

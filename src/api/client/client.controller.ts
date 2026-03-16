@@ -7,6 +7,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { ResetClientPasswordDto } from './dto/forgot-password.dto';
 
 import { LanguageType, UserRole } from 'src/common/enum/index.enum';
 import { AuthGuard } from 'src/common/guard/auth.guard';
@@ -64,6 +65,30 @@ export class ClientController {
   @Post('register/complete')
   completeRegister(@Body() dto: RegisterClientDto) {
     return this.clientService.completeRegister(dto);
+  }
+
+  @ApiOperation({ summary: 'Client forgot password - request OTP' })
+  @ApiBody({ type: RequestClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/request-otp')
+  forgotRequestOtp(@Body() dto: RequestClientOtpDto) {
+    return this.clientService.requestForgotOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Client forgot password - verify OTP' })
+  @ApiBody({ type: VerifyClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/verify-otp')
+  forgotVerifyOtp(@Body() dto: VerifyClientOtpDto) {
+    return this.clientService.verifyForgotOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Client forgot password - reset password' })
+  @ApiBody({ type: ResetClientPasswordDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/reset-password')
+  forgotResetPassword(@Body() dto: ResetClientPasswordDto) {
+    return this.clientService.resetPassword(dto);
   }
 
   @ApiBearerAuth()

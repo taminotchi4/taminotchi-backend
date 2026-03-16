@@ -23,6 +23,7 @@ import { MarketLoginDto } from './dto/market-login.dto';
 import { RequestMarketOtpDto } from './dto/request-otp.dto';
 import { VerifyMarketOtpDto } from './dto/verify-otp.dto';
 import { RegisterMarketDto } from './dto/register-market.dto';
+import { ResetMarketPasswordDto } from './dto/forgot-password.dto';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
@@ -78,6 +79,30 @@ export class MarketController {
   @Post('register/complete')
   completeRegister(@Body() dto: RegisterMarketDto) {
     return this.marketService.completeRegister(dto);
+  }
+
+  @ApiOperation({ summary: 'Market forgot password - request OTP' })
+  @ApiBody({ type: RequestMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/request-otp')
+  forgotRequestOtp(@Body() dto: RequestMarketOtpDto) {
+    return this.marketService.requestForgotOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Market forgot password - verify OTP' })
+  @ApiBody({ type: VerifyMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/verify-otp')
+  forgotVerifyOtp(@Body() dto: VerifyMarketOtpDto) {
+    return this.marketService.verifyForgotOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Market forgot password - reset password' })
+  @ApiBody({ type: ResetMarketPasswordDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('forgot/reset-password')
+  forgotResetPassword(@Body() dto: ResetMarketPasswordDto) {
+    return this.marketService.resetPassword(dto);
   }
 
   @ApiBearerAuth()

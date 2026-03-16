@@ -18,6 +18,7 @@ import { ClientLoginDto } from './dto/client-login.dto';
 import { RequestClientOtpDto } from './dto/request-otp.dto';
 import { VerifyClientOtpDto } from './dto/verify-otp.dto';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { ResetClientPasswordDto } from './dto/forgot-password.dto';
 import { ElonEntity } from 'src/core/entity/elon.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
@@ -403,5 +404,77 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
       return successRes({ deleted: true });
     });
+  }
+
+  // ─────────────────────────────────────────────
+  // FORGOT PASSWORD
+  // ─────────────────────────────────────────────
+
+  async requestForgotOtp(dto: RequestClientOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    if (!user) throw new NotFoundException('Phone number not found');
+
+    const code = String(randomInt(100000, 1000000));
+    const hash = await this.crypto.encrypt(code);
+
+    await this.redis.set(
+      `otp:client:forgot:${phoneNumber}`,
+      JSON.stringify({ hash, attempts: 0 }),
+      'EX',
+      this.OTP_TTL_SEC,
+    );
+
+    return successRes({ otpCode: code });
+  }
+
+  async verifyForgotOtp(dto: VerifyClientOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const key = `otp:client:forgot:${phoneNumber}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new BadRequestException('OTP expired');
+
+    const data = JSON.parse(raw) as { hash: string; attempts: number };
+    if (data.attempts >= this.OTP_MAX_ATTEMPTS) {
+      throw new BadRequestException('OTP attempts exceeded');
+    }
+
+    const ok = await this.crypto.decrypt(dto.code, data.hash);
+    if (!ok) {
+      const ttl = await this.redis.ttl(key);
+      const next = { hash: data.hash, attempts: data.attempts + 1 };
+      if (ttl > 0) {
+        await this.redis.set(key, JSON.stringify(next), 'EX', ttl);
+      } else {
+        await this.redis.set(key, JSON.stringify(next), 'EX', this.OTP_TTL_SEC);
+      }
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.redis.del(key);
+    await this.redis.set(
+      `otp:client:forgot:verified:${phoneNumber}`,
+      '1',
+      'EX',
+      this.VERIFY_TTL_SEC,
+    );
+
+    return successRes({ verified: true });
+  }
+
+  async resetPassword(dto: ResetClientPasswordDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const verifyKey = `otp:client:forgot:verified:${phoneNumber}`;
+    const ok = await this.redis.get(verifyKey);
+    if (!ok) throw new BadRequestException('Phone not verified');
+
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    if (!user) throw new NotFoundException('User not found');
+
+    user.password = await this.crypto.encrypt(dto.newPassword);
+    const saved = await this.repo.save(user);
+    await this.redis.del(verifyKey);
+
+    return successRes(this.safe(saved));
   }
 }

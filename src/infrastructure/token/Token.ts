@@ -33,8 +33,8 @@ export class TokenService {
 
     res.cookie(key, value, {
       httpOnly: true,
-      secure: isProd,                       // localda false bo‘lsin
-      sameSite: isProd ? 'none' : 'lax',
+      secure: false, // isProd,                       // localda false bo‘lsin
+      sameSite: 'lax', // isProd ? 'none' : 'lax',
       maxAge: days * 24 * 60 * 60 * 1000,
       path: '/',
     });

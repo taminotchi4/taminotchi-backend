@@ -75,9 +75,10 @@ import { NotificationModule } from './api/notification/notification.module';
           retryAttempts: 1,
           synchronize: true, // !isProd  prod’da false bo‘ladi
           logging: ['error', 'warn'],
-          ssl: isProd
-            ? { rejectUnauthorized: false }
-            : false,
+          ssl: false,
+          // ssl: isProd
+          //   ? { rejectUnauthorized: false }
+          //   : false,
         };
       },
     }),

@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { CleanupModule } from './infrastructure/cleanup/cleanup.module';
+import { SmsModule } from './infrastructure/sms/sms.module';
 
 import { config } from './config';
 import { AdminModule } from './api/admin/admin.module';
@@ -114,6 +115,7 @@ import { NotificationModule } from './api/notification/notification.module';
     NotificationModule,
     ScheduleModule.forRoot(),
     CleanupModule,
+    SmsModule,
 
     ThrottlerModule.forRoot([
       {
@@ -130,7 +132,7 @@ import { NotificationModule } from './api/notification/notification.module';
   ],
   providers: [
     LanguageMiddleware,
-    
+
   ],
 })
 export class AppModule implements NestModule {

@@ -10,6 +10,7 @@ import { ISuccess, successRes } from 'src/infrastructure/response/success.respon
 import { CryptoService } from 'src/infrastructure/crypto/crypto.service';
 import { AuthCommonService } from 'src/common/auth/auth-common.service';
 import { deleteFile, toPublicPath } from 'src/infrastructure/upload/upload.util';
+import { SmsService } from 'src/infrastructure/sms/sms.service';
 
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { CreateMarketDto } from './dto/create-market.dto';
@@ -42,6 +43,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
+    private readonly sms: SmsService,
   ) {
     super(marketRepo);
   }
@@ -99,6 +101,8 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       'EX',
       this.OTP_TTL_SEC,
     );
+
+    await this.sms.sendOtp(phoneNumber, code, 3);
 
     return successRes({ otpCode: code });
   }
@@ -484,6 +488,8 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       'EX',
       this.OTP_TTL_SEC,
     );
+
+    await this.sms.sendOtp(phoneNumber, code, 2);
 
     return successRes({ otpCode: code });
   }

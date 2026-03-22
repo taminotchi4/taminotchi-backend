@@ -33,6 +33,12 @@ interface ConfigType {
     REDIS_URL: string;
 
     CORS_ORIGINS: string;
+
+    SMS: {
+        DEVSMS_TOKEN: string;
+        DEVSMS_BASE_URL: string;
+        DEVSMS_SERVICE_NAME: string;
+    };
 }
 
 export const config: ConfigType = {
@@ -66,4 +72,10 @@ export const config: ConfigType = {
     REDIS_URL: String(process.env.REDIS_URL),
 
     CORS_ORIGINS: String(process.env.CORS_ORIGINS),
+
+    SMS: {
+        DEVSMS_TOKEN: String(process.env.DEVSMS_TOKEN),
+        DEVSMS_BASE_URL: String(process.env.DEVSMS_BASE_URL || 'https://devsms.uz/api'),
+        DEVSMS_SERVICE_NAME: String(process.env.DEVSMS_SERVICE_NAME || 'App'),
+    },
 };

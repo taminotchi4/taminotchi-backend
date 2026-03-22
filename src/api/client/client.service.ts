@@ -26,6 +26,7 @@ import { CommentEntity } from 'src/core/entity/comment.entity';
 import { PrivateChatEntity } from 'src/core/entity/private-chat.entity';
 import { UserRole } from 'src/common/enum/index.enum';
 import { deleteFile, toPublicPath } from 'src/infrastructure/upload/upload.util';
+import { SmsService } from 'src/infrastructure/sms/sms.service';
 
 @Injectable()
 export class ClientService extends BaseService<CreateClientDto, UpdateClientDto, ClientEntity> {
@@ -39,6 +40,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     private readonly crypto: CryptoService,
     private readonly authCommon: AuthCommonService,
     @InjectRedis() private readonly redis: Redis,
+    private readonly sms: SmsService,
   ) {
     super(clientRepo);
   }
@@ -100,6 +102,8 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
       'EX',
       this.OTP_TTL_SEC,
     );
+
+    await this.sms.sendOtp(phoneNumber, code, 3);
 
     return successRes({ otpCode: code });
   }
@@ -424,6 +428,8 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
       'EX',
       this.OTP_TTL_SEC,
     );
+
+    await this.sms.sendOtp(phoneNumber, code, 2);
 
     return successRes({ otpCode: code });
   }

@@ -105,6 +105,22 @@ export class MarketController {
     return this.marketService.resetPassword(dto);
   }
 
+  @ApiOperation({ summary: 'Market restore deleted account - request OTP' })
+  @ApiBody({ type: RequestMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('restore/request-otp')
+  restoreRequestOtp(@Body() dto: RequestMarketOtpDto) {
+    return this.marketService.requestRestoreOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Market restore deleted account - verify OTP & restore' })
+  @ApiBody({ type: VerifyMarketOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('restore/verify-otp')
+  restoreVerifyOtp(@Body() dto: VerifyMarketOtpDto) {
+    return this.marketService.restoreAccount(dto);
+  }
+
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)

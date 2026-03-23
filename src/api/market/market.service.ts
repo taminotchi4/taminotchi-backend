@@ -543,4 +543,116 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     return successRes(this.safe(saved));
   }
+
+  // ─────────────────────────────────────────────
+  // RESTORE DELETED ACCOUNT
+  // ─────────────────────────────────────────────
+
+  async requestRestoreOtp(dto: RequestMarketOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: true } as any });
+    if (!user) throw new NotFoundException('Deleted market with this phone number not found');
+
+    const code = String(randomInt(100000, 1000000));
+    const hash = await this.crypto.encrypt(code);
+
+    await this.redis.set(
+      `otp:market:restore:${phoneNumber}`,
+      JSON.stringify({ hash, attempts: 0 }),
+      'EX',
+      this.OTP_TTL_SEC,
+    );
+
+    await this.sms.sendOtp(phoneNumber, code, 1);
+
+    return successRes({ otpCode: code });
+  }
+
+  async restoreAccount(dto: VerifyMarketOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const key = `otp:market:restore:${phoneNumber}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new BadRequestException('OTP expired');
+
+    const data = JSON.parse(raw) as { hash: string; attempts: number };
+    if (data.attempts >= this.OTP_MAX_ATTEMPTS) {
+      throw new BadRequestException('OTP attempts exceeded');
+    }
+
+    const ok = await this.crypto.decrypt(dto.code, data.hash);
+    if (!ok) {
+      const ttl = await this.redis.ttl(key);
+      const next = { hash: data.hash, attempts: data.attempts + 1 };
+      if (ttl > 0) {
+        await this.redis.set(key, JSON.stringify(next), 'EX', ttl);
+      } else {
+        await this.redis.set(key, JSON.stringify(next), 'EX', this.OTP_TTL_SEC);
+      }
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.redis.del(key);
+
+    await this.repo.manager.transaction(async (manager) => {
+      const market = await manager.findOne(MarketEntity, {
+        where: { phoneNumber, isDeleted: true } as any,
+        select: ['id'],
+      });
+      if (!market) throw new NotFoundException('Market not found');
+      const id = market.id;
+
+      // ───── PRODUCTS ─────
+      const products = await manager.find(ProductEntity, {
+        where: { marketId: id, isDeleted: true } as any,
+        select: ['id', 'commentId'],
+      });
+      const productIds = products.map((p) => p.id);
+      const productCommentIds = products.map((p) => p.commentId).filter(Boolean);
+
+      if (productIds.length) {
+        await manager.update(PhotoEntity,
+          { productId: In(productIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(ProductEntity,
+          { id: In(productIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── PRODUCT COMMENTS ─────
+      if (productCommentIds.length) {
+        await manager.update(MessageEntity,
+          { commentId: In(productCommentIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(CommentEntity,
+          { id: In(productCommentIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── PRIVATE CHATS ─────
+      const chats = await manager.find(PrivateChatEntity, {
+        where: { marketId: id, isDeleted: true } as any,
+        select: ['id'],
+      });
+      const chatIds = chats.map((c) => c.id);
+
+      if (chatIds.length) {
+        await manager.update(MessageEntity,
+          { privateChatId: In(chatIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(PrivateChatEntity,
+          { id: In(chatIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── MARKET ─────
+      await manager.update(MarketEntity,
+        { id } as any,
+        { isDeleted: false, deletedAt: null });
+    });
+
+    return successRes({ restored: true });
+  }
 }

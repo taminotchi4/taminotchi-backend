@@ -11,7 +11,7 @@ export class CleanupService {
 
     @Cron(CronExpression.EVERY_DAY_AT_10PM)
     async handleCleanup() {
-        const days = config.CLEANUP_DAYS || 30;
+        const days = config.CLEANUP_DAYS || 365;
 
         const cleanupDate = new Date();
         cleanupDate.setDate(cleanupDate.getDate() - days);

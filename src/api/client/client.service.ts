@@ -483,4 +483,116 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     return successRes(this.safe(saved));
   }
+
+  // ─────────────────────────────────────────────
+  // RESTORE DELETED ACCOUNT
+  // ─────────────────────────────────────────────
+
+  async requestRestoreOtp(dto: RequestClientOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: true } as any });
+    if (!user) throw new NotFoundException('Deleted client with this phone number not found');
+
+    const code = String(randomInt(100000, 1000000));
+    const hash = await this.crypto.encrypt(code);
+
+    await this.redis.set(
+      `otp:client:restore:${phoneNumber}`,
+      JSON.stringify({ hash, attempts: 0 }),
+      'EX',
+      this.OTP_TTL_SEC,
+    );
+
+    await this.sms.sendOtp(phoneNumber, code, 1);
+
+    return successRes({ otpCode: code });
+  }
+
+  async restoreAccount(dto: VerifyClientOtpDto) {
+    const phoneNumber = dto.phoneNumber.trim();
+    const key = `otp:client:restore:${phoneNumber}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new BadRequestException('OTP expired');
+
+    const data = JSON.parse(raw) as { hash: string; attempts: number };
+    if (data.attempts >= this.OTP_MAX_ATTEMPTS) {
+      throw new BadRequestException('OTP attempts exceeded');
+    }
+
+    const ok = await this.crypto.decrypt(dto.code, data.hash);
+    if (!ok) {
+      const ttl = await this.redis.ttl(key);
+      const next = { hash: data.hash, attempts: data.attempts + 1 };
+      if (ttl > 0) {
+        await this.redis.set(key, JSON.stringify(next), 'EX', ttl);
+      } else {
+        await this.redis.set(key, JSON.stringify(next), 'EX', this.OTP_TTL_SEC);
+      }
+      throw new BadRequestException('OTP is incorrect');
+    }
+
+    await this.redis.del(key);
+
+    await this.repo.manager.transaction(async (manager) => {
+      const client = await manager.findOne(ClientEntity, {
+        where: { phoneNumber, isDeleted: true } as any,
+        select: ['id'],
+      });
+      if (!client) throw new NotFoundException('Client not found');
+      const id = client.id;
+
+      // ───── ELONS ─────
+      const elons = await manager.find(ElonEntity, {
+        where: { clientId: id, isDeleted: true } as any,
+        select: ['id', 'commentId'],
+      });
+      const elonIds = elons.map((e) => e.id);
+      const elonCommentIds = elons.map((e) => e.commentId).filter(Boolean);
+
+      if (elonIds.length) {
+        await manager.update(PhotoEntity,
+          { elonId: In(elonIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(ElonEntity,
+          { id: In(elonIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── ELON COMMENTS ─────
+      if (elonCommentIds.length) {
+        await manager.update(MessageEntity,
+          { commentId: In(elonCommentIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(CommentEntity,
+          { id: In(elonCommentIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── PRIVATE CHATS ─────
+      const chats = await manager.find(PrivateChatEntity, {
+        where: { clientId: id, isDeleted: true } as any,
+        select: ['id'],
+      });
+      const chatIds = chats.map((c) => c.id);
+
+      if (chatIds.length) {
+        await manager.update(MessageEntity,
+          { privateChatId: In(chatIds), isDeleted: true },
+          { isDeleted: false, deletedAt: null });
+
+        await manager.update(PrivateChatEntity,
+          { id: In(chatIds) },
+          { isDeleted: false, deletedAt: null });
+      }
+
+      // ───── CLIENT ─────
+      await manager.update(ClientEntity,
+        { id } as any,
+        { isDeleted: false, deletedAt: null });
+    });
+
+    return successRes({ restored: true });
+  }
 }

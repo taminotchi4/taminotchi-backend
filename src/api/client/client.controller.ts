@@ -91,6 +91,22 @@ export class ClientController {
     return this.clientService.resetPassword(dto);
   }
 
+  @ApiOperation({ summary: 'Client restore deleted account - request OTP' })
+  @ApiBody({ type: RequestClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('restore/request-otp')
+  restoreRequestOtp(@Body() dto: RequestClientOtpDto) {
+    return this.clientService.requestRestoreOtp(dto);
+  }
+
+  @ApiOperation({ summary: 'Client restore deleted account - verify OTP & restore' })
+  @ApiBody({ type: VerifyClientOtpDto })
+  @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
+  @Post('restore/verify-otp')
+  restoreVerifyOtp(@Body() dto: VerifyClientOtpDto) {
+    return this.clientService.restoreAccount(dto);
+  }
+
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)

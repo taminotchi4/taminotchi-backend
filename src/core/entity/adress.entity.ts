@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { MarketEntity } from './market.entity';
 import { BaseEntity } from './base.entity';
 
@@ -12,6 +12,13 @@ export class AdressEntity extends BaseEntity {
 
     @Column({ type: 'double precision', nullable: true })
     lat: number | null;
+
+    @Column({ type: 'uuid', nullable: true })
+    marketId: string | null;
+
+    @ManyToOne(() => MarketEntity, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'marketId' })
+    market: MarketEntity | null;
 
     // market.adressId
     @OneToMany(() => MarketEntity, (m) => m.adress)

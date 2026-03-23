@@ -7,8 +7,10 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdressService } from './adress.service';
 import { CreateAdressDto } from './dto/create-adress.dto';
@@ -25,15 +27,16 @@ export class AdressController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.MARKET)
   @Post()
-  create(@Body() createAdressDto: CreateAdressDto) {
-    return this.adressService.create(createAdressDto);
+  create(@Body() createAdressDto: CreateAdressDto, @Req() req: Request) {
+    const marketId = (req as any).user.id;
+    return this.adressService.createAddress(createAdressDto, marketId);
   }
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.MARKET, UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get()
   findAll() {
     return this.adressService.findAll();
@@ -41,7 +44,7 @@ export class AdressController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.MARKET, UserRole.CLIENT, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.adressService.findOneById(id);
@@ -49,17 +52,23 @@ export class AdressController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @AccessRoles(UserRole.MARKET)
   @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateAdressDto: UpdateAdressDto) {
-    return this.adressService.update(id, updateAdressDto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateAdressDto: UpdateAdressDto,
+    @Req() req: Request,
+  ) {
+    const marketId = (req as any).user.id;
+    return this.adressService.updateAddress(id, updateAdressDto, marketId);
   }
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
-  @AccessRoles(UserRole.SUPERADMIN)
+  @AccessRoles(UserRole.MARKET)
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.adressService.delete(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    const marketId = (req as any).user.id;
+    return this.adressService.deleteAddress(id, marketId);
   }
 }

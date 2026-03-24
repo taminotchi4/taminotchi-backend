@@ -19,6 +19,7 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FindProductQueryDto } from './dto/find-product-query.dto';
+import { RateProductDto } from './dto/rate-product.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
@@ -136,5 +137,28 @@ export class ProductController {
   @Delete(':id')
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.delete(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @Post(':id/rate')
+  rateProduct(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RateProductDto,
+    @Req() req: any,
+  ) {
+    return this.productService.rateProduct(id, req.user.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @Get(':id/my-rating')
+  getMyRating(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+  ) {
+    return this.productService.getMyRating(id, req.user.id);
   }
 }

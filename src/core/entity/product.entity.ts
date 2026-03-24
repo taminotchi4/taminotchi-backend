@@ -23,7 +23,7 @@ export class ProductEntity extends BaseEntity {
     @Column({ type: 'uuid', nullable: true })
     supCategoryId: string | null;
 
-    @ManyToOne(() => SupCategoryEntity, (sc) => sc.products, {nullable: true, onDelete: 'SET NULL' })
+    @ManyToOne(() => SupCategoryEntity, (sc) => sc.products, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'supCategoryId' })
     supCategory: SupCategoryEntity | null;
 
@@ -57,4 +57,10 @@ export class ProductEntity extends BaseEntity {
 
     @Column({ type: 'boolean', default: true })
     isActive: boolean;
+
+    @Column({ type: 'numeric', precision: 3, scale: 2, default: 0 })
+    avgRating: number;
+
+    @Column({ type: 'int', default: 0 })
+    ratingCount: number;
 }

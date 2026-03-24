@@ -25,6 +25,7 @@ import { SupCategoryEntity } from './core/entity/sup-category.entity';
 import { PhotoEntity } from './core/entity/photo.entity';
 import { OrderEntity } from './core/entity/order.entity';
 import { OrderProductEntity } from './core/entity/order-product.entity';
+import { ProductRatingEntity } from './core/entity/product-rating.entity';
 import { ClientModule } from './api/client/client.module';
 import { CategoryModule } from './api/category/category.module';
 import { ProductModule } from './api/product/product.module';
@@ -70,6 +71,7 @@ import { NotificationModule } from './api/notification/notification.module';
             PhotoEntity,
             OrderEntity,
             OrderProductEntity,
+            ProductRatingEntity,
           ],
           autoLoadEntities: true,
           retryAttempts: 1,

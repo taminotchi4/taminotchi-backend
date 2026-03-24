@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
@@ -10,9 +10,11 @@ import { CommentEntity, CommentScope } from 'src/core/entity/comment.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
+import { ProductRatingEntity } from 'src/core/entity/product-rating.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FindProductQueryDto } from './dto/find-product-query.dto';
+import { RateProductDto } from './dto/rate-product.dto';
 
 @Injectable()
 export class ProductService extends BaseService<CreateProductDto, UpdateProductDto, ProductEntity> {
@@ -27,6 +29,8 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     private readonly categoryRepo: Repository<CategoryEntity>,
     @InjectRepository(SupCategoryEntity)
     private readonly supCategoryRepo: Repository<SupCategoryEntity>,
+    @InjectRepository(ProductRatingEntity)
+    private readonly ratingRepo: Repository<ProductRatingEntity>,
   ) {
     super(productRepo);
   }
@@ -196,6 +200,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
         category: true,
         supCategory: true,
         comment: true,
+        market: true,
       } as any,
     });
     if (!product) throw new NotFoundException('Not found');
@@ -310,5 +315,77 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     }
 
     return products;
+  }
+
+  // ─────────────────────────────────────────────
+  // RATING
+  // ─────────────────────────────────────────────
+
+  async rateProduct(
+    productId: string,
+    clientId: string,
+    dto: RateProductDto,
+  ): Promise<ISuccess<{ avgRating: number; ratingCount: number; myScore: number }>> {
+    const product = await this.productRepo.findOne({
+      where: { id: productId, isDeleted: false } as any,
+      select: ['id'],
+    });
+    if (!product) throw new NotFoundException('Product not found');
+
+    if (dto.score < 1 || dto.score > 5) {
+      throw new BadRequestException('Score must be between 1 and 5');
+    }
+
+    await this.productRepo.manager.transaction(async (manager) => {
+      const ratingRepo = manager.getRepository(ProductRatingEntity);
+      const prodRepo = manager.getRepository(ProductEntity);
+
+      // Upsert: mavjud bo'lsa yangilaydi, yo'q bo'lsa yaratadi
+      const existing = await ratingRepo.findOne({
+        where: { clientId, productId } as any,
+      });
+
+      if (existing) {
+        await ratingRepo.update({ id: existing.id }, { score: dto.score });
+      } else {
+        await ratingRepo.save(ratingRepo.create({ clientId, productId, score: dto.score }));
+      }
+
+      // avgRating va ratingCount ni qayta hisoblaymiz
+      const result = await ratingRepo
+        .createQueryBuilder('r')
+        .select('ROUND(AVG(r.score)::numeric, 2)', 'avg')
+        .addSelect('COUNT(r.id)', 'cnt')
+        .where('r.productId = :productId', { productId })
+        .getRawOne<{ avg: string; cnt: string }>();
+
+      const avgRating = parseFloat(result?.avg ?? '0');
+      const ratingCount = parseInt(result?.cnt ?? '0', 10);
+
+      await prodRepo.update({ id: productId } as any, { avgRating, ratingCount });
+    });
+
+    // Oxirgi holatni qaytaramiz
+    const updated = await this.productRepo.findOne({
+      where: { id: productId } as any,
+      select: ['avgRating', 'ratingCount'],
+    });
+
+    return successRes({
+      avgRating: Number(updated?.avgRating ?? 0),
+      ratingCount: updated?.ratingCount ?? 0,
+      myScore: dto.score,
+    });
+  }
+
+  async getMyRating(
+    productId: string,
+    clientId: string,
+  ): Promise<ISuccess<{ myScore: number | null }>> {
+    const existing = await this.ratingRepo.findOne({
+      where: { clientId, productId } as any,
+      select: ['score'],
+    });
+    return successRes({ myScore: existing?.score ?? null });
   }
 }

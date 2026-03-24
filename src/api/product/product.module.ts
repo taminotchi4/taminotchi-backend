@@ -7,6 +7,7 @@ import { CommentEntity } from 'src/core/entity/comment.entity';
 import { PhotoEntity } from 'src/core/entity/photo.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
+import { ProductRatingEntity } from 'src/core/entity/product-rating.entity';
 
 @Module({
   imports: [
@@ -16,10 +17,11 @@ import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
       PhotoEntity,
       CategoryEntity,
       SupCategoryEntity,
+      ProductRatingEntity,
     ]),
   ],
   controllers: [ProductController],
   providers: [ProductService],
   exports: [ProductService],
 })
-export class ProductModule {}
+export class ProductModule { }

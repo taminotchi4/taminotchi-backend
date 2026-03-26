@@ -295,6 +295,11 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     return successRes(this.safe(saved));
   }
 
+  async updateFcmToken(clientId: string, token: string) {
+    await this.repo.update({ id: clientId }, { fcmToken: token });
+    return successRes({ updated: true });
+  }
+
   async uploadPhoto(clientId: string, file: Express.Multer.File) {
     const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
     if (!client) throw new NotFoundException('Client not found');

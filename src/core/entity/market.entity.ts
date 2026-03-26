@@ -39,6 +39,9 @@ export class MarketEntity extends BaseEntity {
     @Column({ type: 'boolean', default: true })
     isActive: boolean;
 
+    @Column({ type: 'varchar', nullable: true })
+    fcmToken: string | null;
+
     @Column({ type: 'enum', enum: UserRole, default: UserRole.MARKET })
     role: UserRole;
 

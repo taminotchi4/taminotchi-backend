@@ -347,6 +347,11 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     return successRes(this.safe(saved));
   }
 
+  async updateFcmToken(marketId: string, token: string) {
+    await this.repo.update({ id: marketId }, { fcmToken: token });
+    return successRes({ updated: true });
+  }
+
   async uploadPhoto(marketId: string, file: Express.Multer.File) {
     const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Market not found');

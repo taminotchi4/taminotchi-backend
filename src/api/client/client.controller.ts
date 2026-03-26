@@ -185,6 +185,24 @@ export class ClientController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @Patch('me/fcm-token')
+  @ApiOperation({ summary: 'Firebase FCM token yangilash (push notification uchun)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'fcm-device-token-here' },
+      },
+      required: ['token'],
+    },
+  })
+  updateFcmToken(@Req() req: any, @Body('token') token: string) {
+    return this.clientService.updateFcmToken(req.user.id, token);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.CLIENT, UserRole.MARKET)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {

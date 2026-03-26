@@ -199,6 +199,24 @@ export class MarketController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.MARKET)
+  @Patch('me/fcm-token')
+  @ApiOperation({ summary: 'Firebase FCM token yangilash (push notification uchun)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'fcm-device-token-here' },
+      },
+      required: ['token'],
+    },
+  })
+  updateFcmToken(@Req() req: any, @Body('token') token: string) {
+    return this.marketService.updateFcmToken(req.user.id, token);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MARKET, UserRole.CLIENT)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {

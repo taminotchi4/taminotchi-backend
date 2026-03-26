@@ -33,6 +33,9 @@ export class ClientEntity extends BaseEntity {
     @Column({ type: 'boolean', default: true })
     isActive: boolean;
 
+    @Column({ type: 'varchar', nullable: true })
+    fcmToken: string | null;
+
     @OneToMany(() => OrderEntity, (o) => o.client)
     orders: OrderEntity[];
 

@@ -39,6 +39,11 @@ interface ConfigType {
         DEVSMS_BASE_URL: string;
         DEVSMS_SERVICE_NAME: string;
     };
+
+    FIREBASE: {
+        PROJECT_ID: string;
+        CREDENTIALS_PATH: string;
+    };
 }
 
 export const config: ConfigType = {
@@ -77,5 +82,10 @@ export const config: ConfigType = {
         DEVSMS_TOKEN: String(process.env.DEVSMS_TOKEN),
         DEVSMS_BASE_URL: String(process.env.DEVSMS_BASE_URL || 'https://devsms.uz/api'),
         DEVSMS_SERVICE_NAME: String(process.env.DEVSMS_SERVICE_NAME || 'App'),
+    },
+
+    FIREBASE: {
+        PROJECT_ID: String(process.env.FIREBASE_PROJECT_ID || ''),
+        CREDENTIALS_PATH: String(process.env.FIREBASE_CREDENTIALS_PATH || 'src/infrastructure/firebase/serviceAccountKey.json'),
     },
 };

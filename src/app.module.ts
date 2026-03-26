@@ -8,6 +8,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { CleanupModule } from './infrastructure/cleanup/cleanup.module';
 import { SmsModule } from './infrastructure/sms/sms.module';
+import { FirebaseModule } from './infrastructure/firebase/firebase.module';
 
 import { config } from './config';
 import { AdminModule } from './api/admin/admin.module';
@@ -116,6 +117,7 @@ import { NotificationModule } from './api/notification/notification.module';
     MessageModule,
     PrivateChatModule,
     NotificationModule,
+    FirebaseModule,
     ScheduleModule.forRoot(),
     CleanupModule,
     SmsModule,

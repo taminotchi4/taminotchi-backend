@@ -157,9 +157,14 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
             .catch(() => null);
 
         if (chat) {
-            const receiverId = chat.clientId === user.id ? chat.marketId : chat.clientId;
+            const isUserClient = chat.clientId === user.id;
+            const receiverId = isUserClient ? chat.marketId : chat.clientId;
+            const receiverRole = isUserClient
+                ? ('market' as any)
+                : ('client' as any);
             const notif = await this.notifService.create({
                 userId: receiverId,
+                userRole: receiverRole,
                 type: NotificationType.NEW_MESSAGE,
                 senderId: user.id,
                 senderType: user.role as any,

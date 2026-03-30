@@ -28,6 +28,28 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
 import { UserRole } from 'src/common/enum/index.enum';
 import type { Response } from 'express';
+import {
+  ApiUnauthorized,
+  ApiForbidden,
+  ApiNotFound,
+  ApiValidation,
+  ApiConflict,
+  ApiRateLimit,
+  ApiDeletedResponse,
+} from 'src/common/swagger/swagger-responses';
+
+const ADMIN_EXAMPLE = {
+  id: 'uuid',
+  username: 'admin01',
+  phoneNumber: '+998901234567',
+  email: 'admin@example.com',
+  role: 'admin',
+  isActive: true,
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+  isDeleted: false,
+  deletedAt: null,
+};
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -36,6 +58,23 @@ export class AdminController {
 
   @ApiOperation({ summary: 'Admin login' })
   @ApiBody({ type: AdminLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Muvaffaqiyatli login — token cookie ga o\'rnatiladi',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          user: ADMIN_EXAMPLE,
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Login yoki parol noto\'g\'ri' })
+  @ApiValidation()
+  @ApiRateLimit()
   @Throttle({ sensitive: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
@@ -45,6 +84,21 @@ export class AdminController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new admin (SUPER_ADMIN only)' })
   @ApiBody({ type: CreateAdminDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Admin muvaffaqiyatli yaratildi',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: ADMIN_EXAMPLE,
+      },
+    },
+  })
+  @ApiUnauthorized()
+  @ApiForbidden()
+  @ApiConflict('Username or phone already exists')
+  @ApiValidation()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @Post()
@@ -54,6 +108,19 @@ export class AdminController {
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all admins (ADMIN and SUPER_ADMIN)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Adminlar ro\'yxati',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: [ADMIN_EXAMPLE],
+      },
+    },
+  })
+  @ApiUnauthorized()
+  @ApiForbidden()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get()
@@ -63,6 +130,26 @@ export class AdminController {
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin dashboard statistics (ADMIN and SUPER_ADMIN)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard statistikasi',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: {
+          totalClients: 120,
+          totalMarkets: 45,
+          totalProducts: 300,
+          totalElons: 85,
+          totalGroups: 20,
+          totalCategories: 15,
+        },
+      },
+    },
+  })
+  @ApiUnauthorized()
+  @ApiForbidden()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('stats')
@@ -72,6 +159,20 @@ export class AdminController {
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get admin by id (ADMIN and SUPER_ADMIN)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Admin ma\'lumotlari',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: ADMIN_EXAMPLE,
+      },
+    },
+  })
+  @ApiUnauthorized()
+  @ApiForbidden()
+  @ApiNotFound('Admin')
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get(':id')
@@ -82,6 +183,21 @@ export class AdminController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update admin (SUPER_ADMIN only)' })
   @ApiBody({ type: UpdateAdminDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Admin yangilandi',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Amaliyot muvaffaqiyatli bajarildi',
+        data: ADMIN_EXAMPLE,
+      },
+    },
+  })
+  @ApiUnauthorized()
+  @ApiForbidden()
+  @ApiNotFound('Admin')
+  @ApiValidation()
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @Patch(':id')
@@ -91,6 +207,10 @@ export class AdminController {
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete admin (SUPER_ADMIN only)' })
+  @ApiDeletedResponse()
+  @ApiUnauthorized()
+  @ApiForbidden()
+  @ApiNotFound('Admin')
   @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @Delete(':id')

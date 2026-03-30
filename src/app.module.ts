@@ -124,11 +124,6 @@ import { NotificationModule } from './api/notification/notification.module';
 
     ThrottlerModule.forRoot([
       {
-        name: 'default',
-        ttl: 60000,
-        limit: 6000,
-      },
-      {
         name: 'sensitive',
         ttl: 60000,
         limit: 5,

@@ -152,9 +152,7 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
 
         // ── Notification: qabul qiluvchiga ──────────
         // Chat dan kim ikkinchi tomonni topamiz
-        const chat = await this.privateChatWsService['chatRepo']
-            .findOne({ where: { id: dto.privateChatId } })
-            .catch(() => null);
+        const chat = await this.privateChatWsService.getChatById(dto.privateChatId);
 
         if (chat) {
             const isUserClient = chat.clientId === user.id;

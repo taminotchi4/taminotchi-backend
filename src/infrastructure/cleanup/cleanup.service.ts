@@ -29,9 +29,9 @@ export class CleanupService {
 
             // 2.
             'comment',
-            'privateChat',
+            'private_chat',
             'order',
-            'orderProduct',
+            'order_product',
 
             // 3.
             'elon',

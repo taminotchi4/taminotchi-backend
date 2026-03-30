@@ -93,7 +93,7 @@ export class NotificationService {
     // ── Foydalanuvchining notifikatsiyalari ───────
     async getMyNotifications(userId: string, page = 1, limit = 20) {
         const [data, total] = await this.notifRepo.findAndCount({
-            where: { userId },
+            where: { userId, isDeleted: false } as any,
             order: { createdAt: 'DESC' },
             skip: (page - 1) * limit,
             take: limit,

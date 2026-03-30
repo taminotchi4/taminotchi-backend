@@ -2,7 +2,6 @@ import {
     CreateDateColumn,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
-    DeleteDateColumn,
     Column,
 } from 'typeorm';
 import { Transform, Expose } from 'class-transformer';
@@ -27,7 +26,7 @@ export abstract class BaseEntity {
     @Expose({ toPlainOnly: true })
     isDeleted: boolean;
 
-    @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+    @Column({ type: 'timestamptz', nullable: true, default: null })
     @Transform(({ value }) => (value instanceof Date ? value.toISOString() : value), {
         toPlainOnly: true,
     })

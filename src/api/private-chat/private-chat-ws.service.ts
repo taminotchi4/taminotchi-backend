@@ -78,6 +78,11 @@ export class PrivateChatWsService {
         }
     }
 
+    // ── Bitta chat ma'lumotlarini olish (gateway uchun) ──
+    async getChatById(chatId: string): Promise<PrivateChatEntity | null> {
+        return this.chatRepo.findOne({ where: { id: chatId } }).catch(() => null);
+    }
+
     // ── Sender ma'lumotlarini olish (polymorphic) ──
     private async getSender(senderId: string | null, senderType: UserRole | null): Promise<object | null> {
         if (!senderId || !senderType) return null;

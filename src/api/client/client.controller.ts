@@ -40,12 +40,14 @@ export class ClientController {
   }
 
   @ApiOperation({ summary: 'Check client phone exists' })
+  @Throttle({ sensitive: { limit: 100, ttl: 60000 } })
   @Get('check-phone/:phone')
   checkPhone(@Param('phone') phone: string) {
     return this.clientService.checkPhone(phone);
   }
 
   @ApiOperation({ summary: 'Check client username exists' })
+  @Throttle({ sensitive: { limit: 100, ttl: 60000 } })
   @Get('check-username/:username')
   checkUsername(@Param('username') username: string) {
     return this.clientService.checkUsername(username);

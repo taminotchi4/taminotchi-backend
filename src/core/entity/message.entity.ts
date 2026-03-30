@@ -1,4 +1,5 @@
 import {
+    Check,
     Column,
     Entity,
     Index,
@@ -24,6 +25,14 @@ import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum
  *  qolgan ikitasi NULL bo'ladi.
  */
 @Entity('message')
+@Check(
+    'chk_message_scope',
+    `(
+        ("commentId" IS NOT NULL)::int +
+        ("privateChatId" IS NOT NULL)::int +
+        ("groupId" IS NOT NULL)::int
+    ) = 1`,
+)
 export class MessageEntity extends BaseEntity {
     // ── Comment xabar ─────────────────────────────
     @Index()

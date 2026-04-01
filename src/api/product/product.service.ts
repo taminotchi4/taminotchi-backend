@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
@@ -98,9 +98,16 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     id: string,
     dto: UpdateProductDto,
     photoPaths?: string[],
+    requesterId?: string,
+    requesterRole?: string,
   ): Promise<ISuccess<ProductEntity>> {
     const product = await this.repo.findOne({ where: { id, isDeleted: false } as any });
     if (!product) throw new NotFoundException('Not found');
+
+    // Only the owning market can update — admins bypass
+    if (requesterRole === 'market' && product.marketId !== requesterId) {
+      throw new ForbiddenException('You can only update your own products');
+    }
 
     await this.ensureRelationsExist({
       categoryId: dto.categoryId,

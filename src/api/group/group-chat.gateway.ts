@@ -4,6 +4,7 @@ import {
     SubscribeMessage,
     OnGatewayConnection,
     OnGatewayDisconnect,
+    OnGatewayInit,
     MessageBody,
     ConnectedSocket,
     WsException,
@@ -15,6 +16,7 @@ import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { MessageStatus, NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
+import { MessageBroadcastService } from '../message/message-broadcast.service';
 
 /**
  * GROUP CHAT GATEWAY
@@ -45,7 +47,7 @@ import { MessageStatus, NotificationRefType, NotificationType } from 'src/common
     cors: { origin: '*', credentials: true },
     transports: ['websocket', 'polling'],
 })
-export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @WebSocketServer()
     server: Server;
 
@@ -53,7 +55,12 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         private readonly groupChatService: GroupChatService,
         private readonly notifService: NotificationService,
         private readonly notifGateway: NotificationGateway,
+        private readonly broadcast: MessageBroadcastService,
     ) { }
+
+    afterInit(server: Server) {
+        this.broadcast.registerGroupServer(server);
+    }
 
     // ─────────────────────────────────────────────────
     // Ulanish: JWT tekshiriladi, barcha guruhlarga join
@@ -74,9 +81,6 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
             for (const gid of groupIds) {
                 await client.join(`group:${gid}`);
             }
-
-            // Avtomatik DELIVERED statusi
-            await this.groupChatService.markMessagesAsDelivered(user.id, user.role);
 
             console.log(`[GroupChat] +connect  ${user.id} (${user.role}) | rooms: ${groupIds.length}`);
         } catch {
@@ -106,6 +110,9 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         if (!isMember) throw new WsException('You are not a member of this group');
 
         await client.join(`group:${groupId}`);
+
+        // Mark as DELIVERED for this specific group (user is now in this room)
+        await this.groupChatService.markMessagesAsDelivered(groupId, user.id);
 
         // Avtomatik o'qilgan deb belgilash
         await this.groupChatService.markMessagesAsSeen(groupId, user.id);
@@ -144,19 +151,27 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
         const isMember = await this.groupChatService.isMember(dto.groupId, user.id, user.role);
         if (!isMember) throw new WsException('You are not a member of this group');
 
-        const message = await this.groupChatService.saveMessage(dto, user.id, user.role);
+        try {
+            const message = await this.groupChatService.saveMessage(dto, user.id, user.role);
 
-        // Room dagi HAMMA ga broadcast (o'zi ham oladi)
-        this.server.to(`group:${dto.groupId}`).emit('new_message', message);
+            // Broadcast to entire group room (including sender)
+            this.server.to(`group:${dto.groupId}`).emit('new_message', message);
 
-        // ── Notification: yuboruvchidan boshqa barcha a'zolarga ──
-        const memberIds = await this.groupChatService.getGroupMemberIds(dto.groupId);
-        const preview = message.text ?? (message.type === 'image' ? '📷 Rasm' : '🎵 Audio');
+            // ACK to sender only: confirms DB persistence + provides server messageId
+            client.emit('message_ack', {
+                tempId: dto.tempId ?? null,
+                messageId: message.id,
+                status: 'sent',
+            });
 
-        await Promise.all(
-            memberIds
-                .filter((id) => id !== user.id)  // o'ziga yubormaymiz
-                .map(async (memberId) => {
+            // ── Notification: yuboruvchidan boshqa barcha a'zolarga ──
+            // Each member's notification is isolated — one failure does NOT abort the rest
+            const memberIds = await this.groupChatService.getGroupMemberIds(dto.groupId);
+            const preview = message.text ?? (message.type === 'image' ? '📷 Rasm' : '🎵 Audio');
+
+            for (const memberId of memberIds) {
+                if (memberId === user.id) continue;
+                try {
                     const notif = await this.notifService.create({
                         userId: memberId,
                         type: NotificationType.NEW_MESSAGE,
@@ -167,8 +182,16 @@ export class GroupChatGateway implements OnGatewayConnection, OnGatewayDisconnec
                         preview,
                     });
                     this.notifGateway.pushToUser(memberId, notif);
-                }),
-        );
+                } catch (err) {
+                    console.error(`[GroupChat] Notification failed for member ${memberId}:`, err?.message);
+                }
+            }
+        } catch (err) {
+            client.emit('message_error', {
+                tempId: dto.tempId ?? null,
+                reason: err?.message ?? 'Failed to send message',
+            });
+        }
     }
 
     // ─────────────────────────────────────────────────

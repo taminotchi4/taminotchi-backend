@@ -229,16 +229,13 @@ export class GroupChatService {
             .execute();
     }
 
-    // ── Guruh xabarlarini yetkazildi deb belgilash ───
-    async markMessagesAsDelivered(userId: string, role: string): Promise<void> {
-        const groupIds = await this.getUserGroupIds(userId, role);
-        if (groupIds.length === 0) return;
-
+    // ── Guruh xabarlarini yetkazildi deb belgilash (per-group, join paytida) ───
+    async markMessagesAsDelivered(groupId: string, userId: string): Promise<void> {
         await this.msgRepo
             .createQueryBuilder()
             .update(MessageEntity)
             .set({ status: MessageStatus.DELIVERED })
-            .where('groupId IN (:...groupIds)', { groupIds })
+            .where('groupId = :groupId', { groupId })
             .andWhere('senderId != :userId', { userId })
             .andWhere('status = :status', { status: MessageStatus.SENT })
             .execute();

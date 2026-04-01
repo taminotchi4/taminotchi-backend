@@ -4,6 +4,7 @@ import {
     SubscribeMessage,
     OnGatewayConnection,
     OnGatewayDisconnect,
+    OnGatewayInit,
     MessageBody,
     ConnectedSocket,
     WsException,
@@ -11,6 +12,7 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import { CommentChatService } from './comment-chat.service';
+import { MessageBroadcastService } from '../message/message-broadcast.service';
 import { MessageStatus } from 'src/common/enum/index.enum';
 import { SendCommentMessageDto } from './dto/send-comment-message.dto';
 
@@ -48,11 +50,19 @@ import { SendCommentMessageDto } from './dto/send-comment-message.dto';
     cors: { origin: '*', credentials: true },
     transports: ['websocket', 'polling'],
 })
-export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @WebSocketServer()
     server: Server;
 
-    constructor(private readonly commentChatService: CommentChatService) { }
+    constructor(
+        private readonly commentChatService: CommentChatService,
+        private readonly broadcast: MessageBroadcastService,
+    ) { }
+
+    // Register this gateway's WS server with the broadcast service
+    afterInit(server: Server) {
+        this.broadcast.registerCommentServer(server);
+    }
 
     // ─────────────────────────────────────────────────
     // Ulanish: JWT tekshiriladi
@@ -67,9 +77,6 @@ export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconn
 
             const user = await this.commentChatService.verifyToken(token);
             client.data.user = user;
-
-            // Avtomatik DELIVERED statusi
-            await this.commentChatService.markMessagesAsDelivered(user.id);
 
             console.log(`[CommentChat] +connect  ${user.id} (${user.role})`);
         } catch {
@@ -95,8 +102,11 @@ export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconn
 
         await client.join(`comment:${data.commentId}`);
 
-        // Avtomatik o'qilgan deb belgilash
+        // Mark as DELIVERED for this specific comment room
         const user = this.getUser(client);
+        await this.commentChatService.markMessagesAsDelivered(data.commentId, user.id);
+
+        // Avtomatik o'qilgan deb belgilash
         await this.commentChatService.markMessagesAsSeen(data.commentId, user.id);
 
         // Boshqalarga xabar berish
@@ -130,10 +140,24 @@ export class CommentChatGateway implements OnGatewayConnection, OnGatewayDisconn
     ) {
         const user = this.getUser(client);
 
-        const message = await this.commentChatService.saveMessage(dto, user.id, user.role);
+        try {
+            const message = await this.commentChatService.saveMessage(dto, user.id, user.role);
 
-        // Room dagi hamma ga broadcast (o'zi ham oladi)
-        this.server.to(`comment:${dto.commentId}`).emit('new_message', message);
+            // Broadcast to entire room (including sender)
+            this.server.to(`comment:${dto.commentId}`).emit('new_message', message);
+
+            // ACK to sender only: confirms DB persistence + provides server messageId
+            client.emit('message_ack', {
+                tempId: dto.tempId ?? null,
+                messageId: message.id,
+                status: 'sent',
+            });
+        } catch (err) {
+            client.emit('message_error', {
+                tempId: dto.tempId ?? null,
+                reason: err?.message ?? 'Failed to send message',
+            });
+        }
     }
 
     // ─────────────────────────────────────────────────

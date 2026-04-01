@@ -5,12 +5,13 @@ import { MessageService } from './message.service';
 import { MessageController } from './message.controller';
 import { MessageUploadController } from './message-upload.controller';
 import { MessageEntity } from 'src/core/entity/message.entity';
+import { MessageBroadcastService } from './message-broadcast.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([MessageEntity])],
   controllers: [MessageController, MessageUploadController],
-  providers: [MessageService],
-  exports: [MessageService],
+  providers: [MessageService, MessageBroadcastService],
+  exports: [MessageService, MessageBroadcastService],
 })
 export class MessageModule { }
 

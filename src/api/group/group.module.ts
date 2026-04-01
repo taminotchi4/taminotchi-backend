@@ -14,6 +14,7 @@ import { SupCategoryEntity } from 'src/core/entity/sup-category.entity';
 import { CategoryEntity } from 'src/core/entity/category.entity';
 import { MessageEntity } from 'src/core/entity/message.entity';
 import { NotificationModule } from '../notification/notification.module';
+import { MessageModule } from '../message/message.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationModule } from '../notification/notification.module';
       MessageEntity,
     ]),
     NotificationModule,
+    MessageModule,
   ],
   controllers: [GroupController],
   providers: [GroupService, GroupChatGateway, GroupChatService],

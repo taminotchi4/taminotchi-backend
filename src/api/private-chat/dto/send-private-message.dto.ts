@@ -20,4 +20,9 @@ export class SendPrivateMessageDto {
     @IsOptional()
     @IsUUID()
     replyToId?: string;
+
+    /** Client-generated temp ID for ACK mapping */
+    @IsOptional()
+    @IsString()
+    tempId?: string;
 }

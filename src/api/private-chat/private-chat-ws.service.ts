@@ -184,7 +184,7 @@ export class PrivateChatWsService {
         await this.verifyParticipant(privateChatId, userId, role);
 
         const [data, total] = await this.msgRepo.findAndCount({
-            where: { privateChatId },
+            where: { privateChatId, isDeleted: false },
             order: { createdAt: 'ASC' },
             skip: (page - 1) * limit,
             take: limit,
@@ -205,13 +205,13 @@ export class PrivateChatWsService {
             .execute();
     }
 
-    // ── Xabarlarni yetkazildi deb belgilash (ulangan paytda) ──
-    async markMessagesAsDelivered(userId: string): Promise<void> {
+    // ── Xabarlarni yetkazildi deb belgilash (per-chat, join paytida) ──
+    async markMessagesAsDelivered(privateChatId: string, userId: string): Promise<void> {
         await this.msgRepo
             .createQueryBuilder()
             .update(MessageEntity)
             .set({ status: MessageStatus.DELIVERED })
-            .where('privateChatId IS NOT NULL')
+            .where('privateChatId = :privateChatId', { privateChatId })
             .andWhere('senderId != :userId', { userId })
             .andWhere('status = :status', { status: MessageStatus.SENT })
             .execute();

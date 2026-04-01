@@ -53,13 +53,13 @@ export class Application {
 
   //   app.enableCors({
   //     origin: (origin, callback) => {
-  //       // Mobile app / Postman / server-to-server calllarda origin bo‘lmasligi mumkin
+  //       // Mobile app / Postman / server-to-server calls may have no origin
   //       if (!origin) return callback(null, true);
 
-  //       // Agar origins list bo‘sh bo‘lsa, hammasiga ruxsat (dev)
+  //       // If CORS_ORIGINS is empty, allow all (dev mode)
   //       if (!origins.length) return callback(null, true);
 
-  //       // Whitelist
+  //       // Whitelist check
   //       if (origins.includes(origin)) return callback(null, true);
 
   //       return callback(new Error('Not allowed by CORS'), false);

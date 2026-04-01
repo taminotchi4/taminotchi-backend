@@ -4,6 +4,7 @@ import {
     SubscribeMessage,
     OnGatewayConnection,
     OnGatewayDisconnect,
+    OnGatewayInit,
     MessageBody,
     ConnectedSocket,
     WsException,
@@ -15,6 +16,7 @@ import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { MessageStatus, NotificationRefType, NotificationType } from 'src/common/enum/index.enum';
+import { MessageBroadcastService } from '../message/message-broadcast.service';
 
 /**
  * PRIVATE CHAT GATEWAY
@@ -45,7 +47,7 @@ import { MessageStatus, NotificationRefType, NotificationType } from 'src/common
     cors: { origin: '*', credentials: true },
     transports: ['websocket', 'polling'],
 })
-export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     @WebSocketServer()
     server: Server;
 
@@ -53,7 +55,12 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
         private readonly privateChatWsService: PrivateChatWsService,
         private readonly notifService: NotificationService,
         private readonly notifGateway: NotificationGateway,
+        private readonly broadcast: MessageBroadcastService,
     ) { }
+
+    afterInit(server: Server) {
+        this.broadcast.registerPrivateServer(server);
+    }
 
     // ─────────────────────────────────────────────────
     // Ulanish: JWT tekshiriladi, barcha chatlarga join
@@ -69,14 +76,11 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
             const user = await this.privateChatWsService.verifyToken(token);
             client.data.user = user;
 
-            // Foydalanuvchining barcha chatlarini room'larga qo'shamiz
+            // Auto-join all user's existing chat rooms
             const chatIds = await this.privateChatWsService.getUserChatIds(user.id, user.role);
             for (const chatId of chatIds) {
                 await client.join(`private:${chatId}`);
             }
-
-            // Avtomatik DELIVERED statusi
-            await this.privateChatWsService.markMessagesAsDelivered(user.id);
 
             console.log(`[PrivateChat] +connect  ${user.id} (${user.role}) | chats: ${chatIds.length}`);
         } catch {
@@ -106,6 +110,9 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
         );
 
         await client.join(`private:${data.privateChatId}`);
+
+        // Mark as DELIVERED for this specific chat room (user is now in this room)
+        await this.privateChatWsService.markMessagesAsDelivered(data.privateChatId, user.id);
 
         // Avtomatik o'qilgan deb belgilash
         await this.privateChatWsService.markMessagesAsSeen(data.privateChatId, user.id);
@@ -141,36 +148,51 @@ export class PrivateChatGateway implements OnGatewayConnection, OnGatewayDisconn
     ) {
         const user = this.getUser(client);
 
-        const message = await this.privateChatWsService.saveMessage(
-            dto,
-            user.id,
-            user.role,
-        );
+        try {
+            const message = await this.privateChatWsService.saveMessage(
+                dto,
+                user.id,
+                user.role,
+            );
 
-        // Faqat shu chat room iga broadcast
-        this.server.to(`private:${dto.privateChatId}`).emit('new_message', message);
+            // Broadcast to the chat room (both participants)
+            this.server.to(`private:${dto.privateChatId}`).emit('new_message', message);
 
-        // ── Notification: qabul qiluvchiga ──────────
-        // Chat dan kim ikkinchi tomonni topamiz
-        const chat = await this.privateChatWsService.getChatById(dto.privateChatId);
-
-        if (chat) {
-            const isUserClient = chat.clientId === user.id;
-            const receiverId = isUserClient ? chat.marketId : chat.clientId;
-            const receiverRole = isUserClient
-                ? ('market' as any)
-                : ('client' as any);
-            const notif = await this.notifService.create({
-                userId: receiverId,
-                userRole: receiverRole,
-                type: NotificationType.NEW_MESSAGE,
-                senderId: user.id,
-                senderType: user.role as any,
-                referenceId: dto.privateChatId,
-                referenceType: NotificationRefType.PRIVATE_CHAT,
-                preview: message.text ?? (message.type === 'image' ? '📷 Rasm' : '🎵 Audio'),
+            // ACK to sender only: confirms DB persistence + provides server messageId
+            client.emit('message_ack', {
+                tempId: dto.tempId ?? null,
+                messageId: message.id,
+                status: 'sent',
             });
-            this.notifGateway.pushToUser(receiverId, notif);
+
+            // ── Notification: qabul qiluvchiga ──────────
+            // Isolated from message flow — failures are logged, not thrown
+            const chat = await this.privateChatWsService.getChatById(dto.privateChatId);
+            if (chat) {
+                try {
+                    const isUserClient = chat.clientId === user.id;
+                    const receiverId = isUserClient ? chat.marketId : chat.clientId;
+                    const receiverRole = isUserClient ? ('market' as any) : ('client' as any);
+                    const notif = await this.notifService.create({
+                        userId: receiverId,
+                        userRole: receiverRole,
+                        type: NotificationType.NEW_MESSAGE,
+                        senderId: user.id,
+                        senderType: user.role as any,
+                        referenceId: dto.privateChatId,
+                        referenceType: NotificationRefType.PRIVATE_CHAT,
+                        preview: message.text ?? (message.type === 'image' ? '📷 Rasm' : '🎵 Audio'),
+                    });
+                    this.notifGateway.pushToUser(receiverId, notif);
+                } catch (err) {
+                    console.error(`[PrivateChat] Notification failed for chat ${dto.privateChatId}:`, err?.message);
+                }
+            }
+        } catch (err) {
+            client.emit('message_error', {
+                tempId: dto.tempId ?? null,
+                reason: err?.message ?? 'Failed to send message',
+            });
         }
     }
 

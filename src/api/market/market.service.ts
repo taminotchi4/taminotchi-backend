@@ -104,7 +104,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     await this.sms.sendOtp(phoneNumber, code, 3);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async checkPhone(phoneNumber: string) {
@@ -496,7 +496,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     await this.sms.sendOtp(phoneNumber, code, 2);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async verifyForgotOtp(dto: VerifyMarketOtpDto) {
@@ -570,7 +570,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     await this.sms.sendOtp(phoneNumber, code, 1);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async restoreAccount(dto: VerifyMarketOtpDto) {

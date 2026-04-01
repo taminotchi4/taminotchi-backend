@@ -274,9 +274,16 @@ export class ProductController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
     @UploadedFiles() files: { photo?: Express.Multer.File[] },
+    @Req() req: any,
   ) {
     const photos = files?.photo ?? [];
-    return this.productService.updateWithPhoto(id, updateProductDto, photos.map((p) => toPublicPath('product', p.filename)));
+    return this.productService.updateWithPhoto(
+      id,
+      updateProductDto,
+      photos.map((p) => toPublicPath('product', p.filename)),
+      req.user.id,
+      req.user.role,
+    );
   }
 
   @ApiBearerAuth()

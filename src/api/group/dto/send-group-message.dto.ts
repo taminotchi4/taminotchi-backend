@@ -32,4 +32,10 @@ export class SendGroupMessageDto {
     @IsOptional()
     @IsUUID()
     replyToId?: string;
+
+    /** Client-generated temp ID for ACK mapping */
+    @ApiPropertyOptional({ example: 'temp_1712345678_abc' })
+    @IsOptional()
+    @IsString()
+    tempId?: string;
 }

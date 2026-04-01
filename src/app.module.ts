@@ -41,6 +41,7 @@ import { GroupModule } from './api/group/group.module';
 import { MessageModule } from './api/message/message.module';
 import { PrivateChatModule } from './api/private-chat/private-chat.module';
 import { NotificationModule } from './api/notification/notification.module';
+import { AuthModule } from './api/auth/auth.module';
 
 @Module({
   imports: [
@@ -117,6 +118,7 @@ import { NotificationModule } from './api/notification/notification.module';
     MessageModule,
     PrivateChatModule,
     NotificationModule,
+    AuthModule,
     FirebaseModule,
     ScheduleModule.forRoot(),
     CleanupModule,

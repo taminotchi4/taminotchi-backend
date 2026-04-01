@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -8,6 +8,8 @@ import { CommentEntity } from 'src/core/entity/comment.entity';
 import { ClientEntity } from 'src/core/entity/client.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { AdminEntity } from 'src/core/entity/admin.entity';
+import { ElonEntity } from 'src/core/entity/elon.entity';
+import { ProductEntity } from 'src/core/entity/product.entity';
 
 import { SendCommentMessageDto } from './dto/send-comment-message.dto';
 import { MessageStatus, MessageType, UserRole } from 'src/common/enum/index.enum';
@@ -34,6 +36,12 @@ export class CommentChatService {
         @InjectRepository(AdminEntity)
         private readonly adminRepo: Repository<AdminEntity>,
 
+        @InjectRepository(ElonEntity)
+        private readonly elonRepo: Repository<ElonEntity>,
+
+        @InjectRepository(ProductEntity)
+        private readonly productRepo: Repository<ProductEntity>,
+
         private readonly jwt: JwtService,
     ) { }
 
@@ -49,6 +57,38 @@ export class CommentChatService {
         const comment = await this.commentRepo.findOne({ where: { id: commentId, isDeleted: false } });
         if (!comment) throw new NotFoundException('Comment not found');
         return comment;
+    }
+
+    // ── Yozuvchi ruxsatini tekshirish (Fix 6) ────────
+    private async validateSenderAccess(
+        comment: CommentEntity,
+        senderId: string,
+        senderRole: UserRole,
+    ): Promise<void> {
+        // Admins bypass all ownership checks
+        if (senderRole === UserRole.ADMIN || senderRole === UserRole.SUPERADMIN) return;
+
+        if (comment.elonId) {
+            // ELON comments: only the elon's owning CLIENT or any MARKET may write
+            if (senderRole === UserRole.MARKET) return;
+            if (senderRole === UserRole.CLIENT) {
+                const elon = await this.elonRepo.findOne({ where: { id: comment.elonId } });
+                if (elon && elon.clientId === senderId) return;
+            }
+            throw new ForbiddenException('Only the elon owner or a market can comment here');
+        }
+
+        if (comment.productId) {
+            // PRODUCT comments: only the product's owning MARKET or any CLIENT may write
+            if (senderRole === UserRole.CLIENT) return;
+            if (senderRole === UserRole.MARKET) {
+                const product = await this.productRepo.findOne({ where: { id: comment.productId } });
+                if (product && product.marketId === senderId) return;
+            }
+            throw new ForbiddenException('Only the product owner or a client can comment here');
+        }
+
+        // No scope found — allow (should not happen, but fail-open is safer than blocking all)
     }
 
     // ── Sender ma'lumotlarini olish (polymorphic) ──
@@ -123,7 +163,10 @@ export class CommentChatService {
         }
 
         // Comment mavjudligini tekshiramiz
-        await this.getComment(dto.commentId);
+        const comment = await this.getComment(dto.commentId);
+
+        // Ownership tekshiruvi (Fix 6): faqat ruxsat etilgan senderlar yoza oladi
+        await this.validateSenderAccess(comment, senderId, senderRole as UserRole);
 
         const msg = this.msgRepo.create({
             // scope = comment
@@ -171,13 +214,13 @@ export class CommentChatService {
             .execute();
     }
 
-    // ── Comment xabarlarini yetkazildi deb belgilash ───
-    async markMessagesAsDelivered(userId: string): Promise<void> {
+    // ── Comment xabarlarini yetkazildi deb belgilash (per-comment, join paytida) ───
+    async markMessagesAsDelivered(commentId: string, userId: string): Promise<void> {
         await this.msgRepo
             .createQueryBuilder()
             .update(MessageEntity)
             .set({ status: MessageStatus.DELIVERED })
-            .where('commentId IS NOT NULL')
+            .where('commentId = :commentId', { commentId })
             .andWhere('senderId != :userId', { userId })
             .andWhere('status = :status', { status: MessageStatus.SENT })
             .execute();

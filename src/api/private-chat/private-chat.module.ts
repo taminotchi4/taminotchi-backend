@@ -13,6 +13,7 @@ import { ClientEntity } from 'src/core/entity/client.entity';
 import { MarketEntity } from 'src/core/entity/market.entity';
 import { AdminEntity } from 'src/core/entity/admin.entity';
 import { NotificationModule } from '../notification/notification.module';
+import { MessageModule } from '../message/message.module';
 import { config } from 'src/config';
 
 @Module({
@@ -23,6 +24,7 @@ import { config } from 'src/config';
       signOptions: { expiresIn: config.TOKEN.ACCESS_TOKEN_TIME },
     }),
     NotificationModule,
+    MessageModule,
   ],
   controllers: [PrivateChatController],
   providers: [PrivateChatService, PrivateChatGateway, PrivateChatWsService],

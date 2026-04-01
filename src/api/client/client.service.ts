@@ -105,7 +105,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     await this.sms.sendOtp(phoneNumber, code, 3);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async checkPhone(phoneNumber: string) {
@@ -436,7 +436,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     await this.sms.sendOtp(phoneNumber, code, 2);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async verifyForgotOtp(dto: VerifyClientOtpDto) {
@@ -510,7 +510,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     await this.sms.sendOtp(phoneNumber, code, 1);
 
-    return successRes({ otpCode: code });
+    return successRes({ sent: true });
   }
 
   async restoreAccount(dto: VerifyClientOtpDto) {

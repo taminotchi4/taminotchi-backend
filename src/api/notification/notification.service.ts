@@ -109,12 +109,21 @@ export class NotificationService {
         if (!notif) return successRes({ updated: false });
         notif.isRead = true;
         await this.notifRepo.save(notif);
+
+        // Push updated unread count to user's WS session
+        const unreadCount = await this.notifRepo.count({ where: { userId, isRead: false } });
+        this.notifGateway.pushUnreadCount(userId, unreadCount);
+
         return successRes({ updated: true });
     }
 
     // ── Barchasini o'qildi belgilash ──────────────
     async markAllRead(userId: string) {
         await this.notifRepo.update({ userId, isRead: false }, { isRead: true });
+
+        // Push count=0 to user's WS session immediately
+        this.notifGateway.pushUnreadCount(userId, 0);
+
         return successRes({ updated: true });
     }
 

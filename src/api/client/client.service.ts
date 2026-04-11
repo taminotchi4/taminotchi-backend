@@ -68,7 +68,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     return this.authCommon.signIn({
       repo: this.clientRepo,
-      where: [{ phoneNumber }],
+      where: { phoneNumber, isDeleted: false } as any,
       password,
       res,
       safeUser: (c) => ({
@@ -332,6 +332,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     idFromParam: string | undefined,
     user: any,
   ): Promise<ISuccess<{ deleted: true }>> {
+    console.log(idFromParam, user);
 
     // SUPERADMIN boshqa clientni o‘chiradi
     if (user.role === UserRole.SUPERADMIN) {

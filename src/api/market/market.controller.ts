@@ -440,6 +440,17 @@ export class MarketController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.MARKET)
+  @ApiOperation({ summary: 'O\'z profilni o\'chirish (market)' })
+  @ApiDeletedResponse()
+  @ApiUnauthorized()
+  @Delete('me')
+  removeSelf(@Req() req: any) {
+    return this.marketService.deleteWithRole(req.user.id, req.user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @ApiOperation({ summary: 'Market o\'chirish (superadmin)' })
   @ApiDeletedResponse()
@@ -449,15 +460,5 @@ export class MarketController {
   @Delete(':id')
   removeByAdmin(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.marketService.deleteWithRole(id, req.user);
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'O\'z profilni o\'chirish (market)' })
-  @ApiDeletedResponse()
-  @ApiUnauthorized()
-  @Delete('me')
-  removeSelf(@Req() req: any) {
-    return this.marketService.deleteWithRole(req.user.id, req.user);
   }
 }

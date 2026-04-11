@@ -71,7 +71,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     return this.authCommon.signIn({
       repo: this.marketRepo,
-      where: { phoneNumber },
+      where: { phoneNumber, isDeleted: false } as any,
       password,
       res,
       safeUser: (m) => ({

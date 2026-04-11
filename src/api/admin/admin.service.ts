@@ -80,7 +80,7 @@ export class AdminService
 
     return this.authCommon.signIn({
       repo: this.adminRepo,
-      where: { username },
+      where: { username, isDeleted: false } as any,
       password,
       res,
       safeUser: (a) => ({

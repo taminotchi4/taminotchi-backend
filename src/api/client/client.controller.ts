@@ -382,6 +382,18 @@ export class ClientController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.CLIENT)
+  @ApiOperation({ summary: 'O\'z profilni o\'chirish (client)' })
+  @ApiDeletedResponse()
+  @ApiUnauthorized()
+  @Delete('me')
+  removeSelf(@Req() req: any) {
+    console.log('User requesting delete:', req.user);
+    return this.clientService.deleteWithRole(req.user.id, req.user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
   @AccessRoles(UserRole.SUPERADMIN)
   @ApiOperation({ summary: 'Client o\'chirish (superadmin)' })
   @ApiDeletedResponse()
@@ -391,15 +403,5 @@ export class ClientController {
   @Delete(':id')
   removeByAdmin(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.clientService.deleteWithRole(id, req.user);
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'O\'z profilni o\'chirish (client)' })
-  @ApiDeletedResponse()
-  @ApiUnauthorized()
-  @Delete('me')
-  removeSelf(@Req() req: any) {
-    return this.clientService.deleteWithRole(req.user.id, req.user);
   }
 }

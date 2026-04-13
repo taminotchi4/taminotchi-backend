@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 
@@ -166,10 +166,16 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
   async updateWithPhoto(
     id: string,
     dto: UpdateElonDto,
+    userId: string,
+    role: string,
     photoPaths?: string[],
   ): Promise<ISuccess<ElonEntity>> {
-    const elon = await this.repo.findOne({ where: { id } as any });
+    const elon = await this.elonRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!elon) throw new NotFoundException('Not found');
+
+    if (role === 'client' && elon.clientId !== userId) {
+      throw new ForbiddenException('You can only update your own elons');
+    }
 
     await this.ensureRelationsExist({
       categoryId: dto.categoryId,
@@ -183,7 +189,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     if (dto.price !== undefined) elon.price = dto.price ?? null;
     if (dto.status !== undefined) elon.status = dto.status;
 
-    const saved = await this.repo.save(elon);
+    const saved = await this.elonRepo.save(elon);
     if (photoPaths?.length) {
       await this.photoRepo.save(
         photoPaths.map((path) =>
@@ -197,7 +203,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     }
 
     // Photolar saqlangandan keyin enrich qilamiz
-    const fresh = await this.repo.findOne({
+    const fresh = await this.elonRepo.findOne({
       where: { id: saved.id } as any,
       relations: { category: true, supCategory: true, groups: true, comment: true } as any,
     });
@@ -206,7 +212,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
   }
 
   override async findAll(): Promise<ISuccess<ElonEntity[]>> {
-    const data = await this.repo.find({
+    const data = await this.elonRepo.find({
       relations: {
         category: true,
         supCategory: true,
@@ -214,7 +220,7 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
         client: true,
         comment: true,
       } as any,
-      where: { isDeleted: false },
+      where: { isDeleted: false, isVerified: true },
       order: { createdAt: 'DESC' } as any,
     });
     const enriched = await this.enrichElons(data);
@@ -224,7 +230,73 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
   async findWithPaginationAndFilters(query: FindElonQueryDto): Promise<ISuccess<ElonEntity[]>> {
     const { page = 1, limit = 10, categoryId, supCategoryId, groupId } = query;
 
-    const queryBuilder = this.repo.createQueryBuilder('elon')
+    const queryBuilder = this.elonRepo.createQueryBuilder('elon')
+      .leftJoinAndSelect('elon.category', 'category')
+      .leftJoinAndSelect('elon.supCategory', 'supCategory')
+      .leftJoinAndSelect('elon.client', 'client')
+      .leftJoinAndSelect('elon.groups', 'groups')
+      .leftJoinAndSelect('elon.comment', 'comment')
+      .where('elon.isDeleted = :isDeleted', { isDeleted: false })
+      .andWhere('elon.isVerified = :isVerified', { isVerified: true });
+
+    if (categoryId) {
+      queryBuilder.andWhere('elon.categoryId = :categoryId', { categoryId });
+    }
+
+    if (supCategoryId) {
+      queryBuilder.andWhere('elon.supCategoryId = :supCategoryId', { supCategoryId });
+    }
+
+    if (groupId) {
+      queryBuilder.andWhere('groups.id = :groupId', { groupId });
+    }
+
+    const skip = (page - 1) * limit;
+
+    queryBuilder
+      .orderBy('elon.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+    const enriched = await this.enrichElons(data);
+
+    const totalPages = Math.ceil(total / limit);
+    const from = total === 0 ? 0 : skip + 1;
+    const to = Math.min(skip + limit, total);
+
+    const meta = {
+      totalElements: total,
+      totalPages,
+      pageSize: limit,
+      currentPage: page,
+      from,
+      to,
+    };
+
+    return successRes(enriched, 200, undefined, meta);
+  }
+
+  override async findOneById(id: string): Promise<ISuccess<ElonEntity>> {
+    const elon = await this.elonRepo.findOne({
+      where: { id, isDeleted: false } as any,
+      relations: {
+        category: true,
+        supCategory: true,
+        groups: true,
+        client: true,
+        comment: true,
+      } as any,
+    });
+    if (!elon) throw new NotFoundException('Not found');
+    const enriched = await this.enrichElons([elon]);
+    return successRes(enriched[0]);
+  }
+
+  async findForVerification(query: FindElonQueryDto): Promise<ISuccess<ElonEntity[]>> {
+    const { page = 1, limit = 10, categoryId, supCategoryId, groupId } = query;
+
+    const queryBuilder = this.elonRepo.createQueryBuilder('elon')
       .leftJoinAndSelect('elon.category', 'category')
       .leftJoinAndSelect('elon.supCategory', 'supCategory')
       .leftJoinAndSelect('elon.client', 'client')
@@ -270,19 +342,13 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
     return successRes(enriched, 200, undefined, meta);
   }
 
-  override async findOneById(id: string): Promise<ISuccess<ElonEntity>> {
-    const elon = await this.repo.findOne({
-      where: { id, isDeleted: false } as any,
-      relations: {
-        category: true,
-        supCategory: true,
-        groups: true,
-        client: true,
-        comment: true,
-      } as any,
-    });
+  async updateVerificationStatus(id: string, isVerified: boolean): Promise<ISuccess<ElonEntity>> {
+    const elon = await this.elonRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!elon) throw new NotFoundException('Not found');
-    const enriched = await this.enrichElons([elon]);
+
+    elon.isVerified = isVerified;
+    const saved = await this.elonRepo.save(elon);
+    const enriched = await this.enrichElons([saved]);
     return successRes(enriched[0]);
   }
 
@@ -332,20 +398,20 @@ export class ElonService extends BaseService<CreateElonDto, UpdateElonDto, ElonE
   }
 
   async incrementAnswerCount(id: string): Promise<ISuccess<ElonEntity>> {
-    const elon = await this.repo.findOne({ where: { id, isDeleted: false } as any });
+    const elon = await this.elonRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!elon) throw new NotFoundException('Elon Not found');
 
     elon.answerCount += 1;
-    const saved = await this.repo.save(elon);
+    const saved = await this.elonRepo.save(elon);
     return successRes(saved);
   }
 
   async updateStatus(id: string, status: ElonStatus): Promise<ISuccess<ElonEntity>> {
-    const elon = await this.repo.findOne({ where: { id, isDeleted: false } as any });
+    const elon = await this.elonRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!elon) throw new NotFoundException('Not found');
 
     elon.status = status;
-    const saved = await this.repo.save(elon);
+    const saved = await this.elonRepo.save(elon);
     const enriched = await this.enrichElons([saved]);
     return successRes(enriched[0]);
   }

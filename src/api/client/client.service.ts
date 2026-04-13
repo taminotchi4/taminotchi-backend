@@ -59,7 +59,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (username?.trim()) {
       where.username = ILike(`%${username.trim()}%`);
     }
-    const data = await this.repo.find({ where, order: { createdAt: 'DESC' } as any });
+    const data = await this.clientRepo.find({ where, order: { createdAt: 'DESC' } as any });
     return successRes(data.map((c) => this.safe(c)));
   }
 
@@ -90,7 +90,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async requestRegisterOtp(dto: RequestClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const existsPhone = await this.clientRepo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const code = String(randomInt(100000, 1000000));
@@ -110,14 +110,14 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async checkPhone(phoneNumber: string) {
     const phone = phoneNumber.trim();
-    const exists = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
+    const exists = await this.clientRepo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
   async checkUsername(username: string) {
     const value = username.trim();
     if (!value) return successRes({ exists: false });
-    const exists = await this.repo.findOne({ where: { username: value, isDeleted: false } as any });
+    const exists = await this.clientRepo.findOne({ where: { username: value, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
@@ -162,14 +162,14 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (!ok) throw new BadRequestException('Phone not verified');
 
     if (dto.username) {
-      const existsUsername = await this.repo.findOne({ where: { username: dto.username, isDeleted: false } as any });
+      const existsUsername = await this.clientRepo.findOne({ where: { username: dto.username} as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const existsPhone = await this.clientRepo.findOne({ where: { phoneNumber} as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
-    const entity = this.repo.create({
+    const entity = this.clientRepo.create({
       ...(dto.fullName ? { fullName: dto.fullName } : {}),
       ...(dto.username ? { username: dto.username.trim() } : {}),
       password: await this.crypto.encrypt(dto.password),
@@ -177,18 +177,18 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
       ...(dto.language ? { language: dto.language } : {}),
     });
 
-    const saved = await this.repo.save(entity);
+    const saved = await this.clientRepo.save(entity);
     await this.redis.del(verifyKey);
     return successRes(this.safe(saved), 201);
   }
 
   override async update(id: string, dto: UpdateClientDto): Promise<ISuccess<any>> {
-    const client = await this.repo.findOne({ where: { id, isDeleted: false } });
+    const client = await this.clientRepo.findOne({ where: { id, isDeleted: false } });
     if (!client) throw new NotFoundException('Not found');
 
     if (dto.username) {
       const username = dto.username.trim();
-      const u = await this.repo.findOne({ where: { username, isDeleted: false } });
+      const u = await this.clientRepo.findOne({ where: { username} });
       if (u && (u).id !== id) throw new ConflictException('Username already exists');
       (client).username = username;
     }
@@ -196,7 +196,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber?.trim() ?? null;
       if (phone) {
-        const p = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } });
+        const p = await this.clientRepo.findOne({ where: { phoneNumber: phone} });
         if (p && (p).id !== id) throw new ConflictException('Phone number already exists');
       }
       (client).phoneNumber = phone;
@@ -209,7 +209,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (dto.fullName !== undefined) (client).fullName = dto.fullName;
     if (dto.language !== undefined) (client).language = dto.language;
 
-    const saved = await this.repo.save(client);
+    const saved = await this.clientRepo.save(client);
     return successRes(this.safe(saved));
   }
 
@@ -264,13 +264,13 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
   }
 
   async updateMe(clientId: string, dto: UpdateClientDto) {
-    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    const client = await this.clientRepo.findOne({ where: { id: clientId, isDeleted: false } });
     if (!client) throw new NotFoundException('Not found');
 
     if (dto.username !== undefined) {
       const username = dto.username?.trim();
       if (username) {
-        const u = await this.repo.findOne({ where: { username, isDeleted: false } });
+        const u = await this.clientRepo.findOne({ where: { username } });
         if (u && (u).id !== clientId) throw new ConflictException('Username already exists');
         client.username = username;
       }
@@ -279,7 +279,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber?.trim();
       if (!phone) throw new BadRequestException('Phone number cannot be empty');
-      const p = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } });
+      const p = await this.clientRepo.findOne({ where: { phoneNumber: phone } });
       if (p && (p).id !== clientId) throw new ConflictException('Phone number already exists');
       client.phoneNumber = phone;
     }
@@ -291,17 +291,17 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     if (dto.fullName !== undefined) client.fullName = dto.fullName;
     if (dto.language !== undefined) client.language = dto.language;
 
-    const saved = await this.repo.save(client);
+    const saved = await this.clientRepo.save(client);
     return successRes(this.safe(saved));
   }
 
   async updateFcmToken(clientId: string, token: string) {
-    await this.repo.update({ id: clientId }, { fcmToken: token });
+    await this.clientRepo.update({ id: clientId }, { fcmToken: token });
     return successRes({ updated: true });
   }
 
   async uploadPhoto(clientId: string, file: Express.Multer.File) {
-    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    const client = await this.clientRepo.findOne({ where: { id: clientId, isDeleted: false } });
     if (!client) throw new NotFoundException('Client not found');
 
     // Eski rasmni o'chirish
@@ -310,19 +310,19 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     }
 
     client.photoPath = toPublicPath('client', file.filename);
-    const saved = await this.repo.save(client);
+    const saved = await this.clientRepo.save(client);
 
     return successRes(this.safe(saved));
   }
 
   async deletePhoto(clientId: string) {
-    const client = await this.repo.findOne({ where: { id: clientId, isDeleted: false } });
+    const client = await this.clientRepo.findOne({ where: { id: clientId, isDeleted: false } });
     if (!client) throw new NotFoundException('Client not found');
 
     if (client.photoPath) {
       await deleteFile(client.photoPath);
       client.photoPath = null;
-      await this.repo.save(client);
+      await this.clientRepo.save(client);
     }
 
     return successRes(this.safe(client));
@@ -350,7 +350,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
   }
 
   async SoftDelete(id: string): Promise<ISuccess<{ deleted: true }>> {
-    return this.repo.manager.transaction(async (manager) => {
+    return this.clientRepo.manager.transaction(async (manager) => {
       const now = new Date();
 
       const client = await manager.findOne(ClientEntity, {
@@ -422,7 +422,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async requestForgotOtp(dto: RequestClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const user = await this.clientRepo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (!user) throw new NotFoundException('Phone number not found');
 
     const code = String(randomInt(100000, 1000000));
@@ -480,11 +480,11 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const user = await this.clientRepo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (!user) throw new NotFoundException('User not found');
 
     user.password = await this.crypto.encrypt(dto.newPassword);
-    const saved = await this.repo.save(user);
+    const saved = await this.clientRepo.save(user);
     await this.redis.del(verifyKey);
 
     return successRes(this.safe(saved));
@@ -496,7 +496,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
   async requestRestoreOtp(dto: RequestClientOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: true } as any });
+    const user = await this.clientRepo.findOne({ where: { phoneNumber, isDeleted: true } as any });
     if (!user) throw new NotFoundException('Deleted client with this phone number not found');
 
     const code = String(randomInt(100000, 1000000));
@@ -539,7 +539,7 @@ export class ClientService extends BaseService<CreateClientDto, UpdateClientDto,
 
     await this.redis.del(key);
 
-    await this.repo.manager.transaction(async (manager) => {
+    await this.clientRepo.manager.transaction(async (manager) => {
       const client = await manager.findOne(ClientEntity, {
         where: { phoneNumber, isDeleted: true } as any,
         select: ['id'],

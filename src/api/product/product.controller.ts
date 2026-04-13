@@ -19,6 +19,7 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FindProductQueryDto } from './dto/find-product-query.dto';
+import { UpdateVerificationDto } from './dto/update-verification.dto';
 import { RateProductDto } from './dto/rate-product.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
@@ -213,6 +214,27 @@ export class ProductController {
   })
   findAll(@Query() query: FindProductQueryDto) {
     return this.productService.findWithPaginationAndFilters(query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Barcha tasdiqlanishi kutilayotgan yoki tasdiqlangan mahsulotlarni olish (Admin)' })
+  @Get('admin/verification')
+  findForVerification(@Query() query: FindProductQueryDto) {
+    return this.productService.findForVerification(query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Mahsulotni tasdiqlash yoki bekor qilish (Admin)' })
+  @Patch('admin/verification/:id')
+  updateVerificationStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVerificationDto,
+  ) {
+    return this.productService.updateVerificationStatus(id, dto.isVerified);
   }
 
   @Get(':id')

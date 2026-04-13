@@ -101,7 +101,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     requesterId?: string,
     requesterRole?: string,
   ): Promise<ISuccess<ProductEntity>> {
-    const product = await this.repo.findOne({ where: { id, isDeleted: false } as any });
+    const product = await this.productRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!product) throw new NotFoundException('Not found');
 
     // Only the owning market can update — admins bypass
@@ -122,7 +122,7 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     if (dto.description !== undefined) product.description = dto.description ?? null;
     if (dto.isActive !== undefined) product.isActive = dto.isActive;
 
-    const saved = await this.repo.save(product);
+    const saved = await this.productRepo.save(product);
     if (photoPaths?.length) {
       await this.photoRepo.save(
         photoPaths.map((path) =>
@@ -139,13 +139,13 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
   }
 
   override async findAll(): Promise<ISuccess<ProductEntity[]>> {
-    const data = await this.repo.find({
+    const data = await this.productRepo.find({
       relations: {
         category: true,
         supCategory: true,
         comment: true,
       } as any,
-      where: { isDeleted: false },
+      where: { isDeleted: false, isVerified: true, isActive: true },
       order: { createdAt: 'DESC' } as any,
     });
     const enriched = await this.enrichProducts(data);
@@ -155,7 +155,72 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
   async findWithPaginationAndFilters(query: FindProductQueryDto): Promise<ISuccess<ProductEntity[]>> {
     const { page = 1, limit = 10, categoryId, supCategoryId, marketId } = query;
 
-    const queryBuilder = this.repo.createQueryBuilder('product')
+    const queryBuilder = this.productRepo.createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supCategory', 'supCategory')
+      .leftJoinAndSelect('product.market', 'market')
+      .leftJoinAndSelect('product.comment', 'comment')
+      .where('product.isDeleted = :isDeleted', { isDeleted: false })
+      .andWhere('product.isVerified = :isVerified', { isVerified: true })
+      .andWhere('product.isActive = :isActive', { isActive: true });
+
+    if (categoryId) {
+      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+    }
+
+    if (supCategoryId) {
+      queryBuilder.andWhere('product.supCategoryId = :supCategoryId', { supCategoryId });
+    }
+
+    if (marketId) {
+      queryBuilder.andWhere('product.marketId = :marketId', { marketId });
+    }
+
+    const skip = (page - 1) * limit;
+
+    queryBuilder
+      .orderBy('product.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+    const enriched = await this.enrichProducts(data);
+
+    const totalPages = Math.ceil(total / limit);
+    const from = total === 0 ? 0 : skip + 1;
+    const to = Math.min(skip + limit, total);
+
+    const meta = {
+      totalElements: total,
+      totalPages,
+      pageSize: limit,
+      currentPage: page,
+      from,
+      to,
+    };
+
+    return successRes(enriched, 200, undefined, meta);
+  }
+
+  override async findOneById(id: string): Promise<ISuccess<ProductEntity>> {
+    const product = await this.productRepo.findOne({
+      where: { id, isDeleted: false } as any,
+      relations: {
+        category: true,
+        supCategory: true,
+        comment: true,
+        market: true,
+      } as any,
+    });
+    if (!product) throw new NotFoundException('Not found');
+    const enriched = await this.enrichProducts([product]);
+    return successRes(enriched[0]);
+  }
+
+  async findForVerification(query: FindProductQueryDto): Promise<ISuccess<ProductEntity[]>> {
+    const { page = 1, limit = 10, categoryId, supCategoryId, marketId } = query;
+
+    const queryBuilder = this.productRepo.createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supCategory', 'supCategory')
       .leftJoinAndSelect('product.market', 'market')
@@ -200,18 +265,13 @@ export class ProductService extends BaseService<CreateProductDto, UpdateProductD
     return successRes(enriched, 200, undefined, meta);
   }
 
-  override async findOneById(id: string): Promise<ISuccess<ProductEntity>> {
-    const product = await this.repo.findOne({
-      where: { id, isDeleted: false } as any,
-      relations: {
-        category: true,
-        supCategory: true,
-        comment: true,
-        market: true,
-      } as any,
-    });
+  async updateVerificationStatus(id: string, isVerified: boolean): Promise<ISuccess<ProductEntity>> {
+    const product = await this.productRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!product) throw new NotFoundException('Not found');
-    const enriched = await this.enrichProducts([product]);
+
+    product.isVerified = isVerified;
+    const saved = await this.productRepo.save(product);
+    const enriched = await this.enrichProducts([saved]);
     return successRes(enriched[0]);
   }
 

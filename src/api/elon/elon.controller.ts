@@ -20,6 +20,7 @@ import { CreateElonDto } from './dto/create-elon.dto';
 import { UpdateElonDto } from './dto/update-elon.dto';
 import { UpdateElonStatusDto } from './dto/update-elon-status.dto';
 import { FindElonQueryDto } from './dto/find-elon-query.dto';
+import { UpdateVerificationDto } from './dto/update-verification.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AccessRoles } from 'src/common/decorator/access-roles.decorator';
@@ -229,6 +230,27 @@ export class ElonController {
     return this.elonService.findWithPaginationAndFilters(query);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Barcha tasdiqlanishi kutilayotgan yoki tasdiqlangan e\'lonlarni olish (Admin)' })
+  @Get('admin/verification')
+  findForVerification(@Query() query: FindElonQueryDto) {
+    return this.elonService.findForVerification(query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RolesGuard)
+  @AccessRoles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'E\'lonni tasdiqlash yoki bekor qilish (Admin)' })
+  @Patch('admin/verification/:id')
+  updateVerificationStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVerificationDto,
+  ) {
+    return this.elonService.updateVerificationStatus(id, dto.isVerified);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Bitta e\'lon — category, supCategory, groups, client, photos, comment (+messageCount) bilan' })
   @ApiResponse({
@@ -287,9 +309,15 @@ export class ElonController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateElonDto: UpdateElonDto,
     @UploadedFiles() files: { photo?: Express.Multer.File[] },
+    @Req() req: any,
   ) {
     const photos = files?.photo ?? [];
-    return this.elonService.updateWithPhoto(id, updateElonDto, photos.map((p) => toPublicPath('elon', p.filename)));
+    return this.elonService.updateWithPhoto(
+      id, 
+      updateElonDto,
+      req.user.id,
+      req.user.role, 
+      photos.map((p) => toPublicPath('elon', p.filename)));
   }
 
   @ApiBearerAuth()

@@ -63,4 +63,7 @@ export class ProductEntity extends BaseEntity {
 
     @Column({ type: 'int', default: 0 })
     ratingCount: number;
+
+    @Column({ type: 'boolean', default: true })
+    isVerified: boolean;
 }

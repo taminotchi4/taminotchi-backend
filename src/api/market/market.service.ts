@@ -62,7 +62,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (username?.trim()) {
       where.username = ILike(`%${username.trim()}%`);
     }
-    const data = await this.repo.find({ where, order: { createdAt: 'DESC' } as any });
+    const data = await this.marketRepo.find({ where, order: { createdAt: 'DESC' } as any });
     return successRes(data.map((m) => this.safe(m)));
   }
 
@@ -89,7 +89,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async requestRegisterOtp(dto: RequestMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const existsPhone = await this.marketRepo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     const code = String(randomInt(100000, 1000000));
@@ -109,14 +109,14 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async checkPhone(phoneNumber: string) {
     const phone = phoneNumber.trim();
-    const exists = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
+    const exists = await this.marketRepo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
   async checkUsername(username: string) {
     const value = username.trim();
     if (!value) return successRes({ exists: false });
-    const exists = await this.repo.findOne({ where: { username: value, isDeleted: false } as any });
+    const exists = await this.marketRepo.findOne({ where: { username: value, isDeleted: false } as any });
     return successRes({ exists: Boolean(exists) });
   }
 
@@ -130,17 +130,17 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const phoneNumber = dto.phoneNumber.trim();
     await this.ensureAdressExists(dto.adressId);
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const existsPhone = await this.marketRepo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
 
     if (dto.username && dto.username !== undefined) {
       const username = dto.username.trim();
       if (!username) throw new BadRequestException('Username cannot be empty');
-      const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
+      const existsUsername = await this.marketRepo.findOne({ where: { username } as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
-    const entity = this.repo.create({
+    const entity = this.marketRepo.create({
       ...(dto.name ? { name: dto.name.trim() } : {}),
       phoneNumber,
       ...(dto.username && dto.username !== undefined ? { username: dto.username.trim() } : {}),
@@ -150,7 +150,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       photoPath: dto.photoPath ?? null,
     });
 
-    const saved = await this.repo.save(entity);
+    const saved = await this.marketRepo.save(entity);
     return successRes(this.safe(saved), 201);
   }
 
@@ -195,16 +195,16 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
-    const existsPhone = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const existsPhone = await this.marketRepo.findOne({ where: { phoneNumber } as any });
     if (existsPhone) throw new ConflictException('Phone number already exists');
     if (dto.username !== undefined) {
       const username = dto.username.trim();
       if (!username) throw new BadRequestException('Username cannot be empty');
-      const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
+      const existsUsername = await this.marketRepo.findOne({ where: { username } as any });
       if (existsUsername) throw new ConflictException('Username already exists');
     }
 
-    const entity = this.repo.create({
+    const entity = this.marketRepo.create({
       ...(dto.name ? { name: dto.name.trim() } : {}),
       ...(dto.username !== undefined ? { username: dto.username.trim() } : {}),
       phoneNumber,
@@ -214,13 +214,13 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
       photoPath: dto.photoPath ?? null,
     });
 
-    const saved = await this.repo.save(entity);
+    const saved = await this.marketRepo.save(entity);
     await this.redis.del(verifyKey);
     return successRes(this.safe(saved), 201);
   }
 
   override async update(id: string, dto: UpdateMarketDto): Promise<ISuccess<any>> {
-    const market = await this.repo.findOne({ where: { id, isDeleted: false } as any });
+    const market = await this.marketRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Not found');
     await this.ensureAdressExists(dto.adressId);
 
@@ -228,7 +228,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber.trim();
-      const existsPhone = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
+      const existsPhone = await this.marketRepo.findOne({ where: { phoneNumber: phone } as any });
       if (existsPhone && (existsPhone as any).id !== id)
         throw new ConflictException('Phone number already exists');
       market.phoneNumber = phone;
@@ -236,7 +236,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (dto.username !== undefined) {
       const username = dto.username?.trim() ?? null;
       if (username) {
-        const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
+        const existsUsername = await this.marketRepo.findOne({ where: { username } as any });
         if (existsUsername && (existsUsername as any).id !== id) {
           throw new ConflictException('Username already exists');
         }
@@ -253,7 +253,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (dto.language !== undefined) market.language = dto.language;
     if (dto.isActive !== undefined) market.isActive = dto.isActive;
 
-    const saved = await this.repo.save(market);
+    const saved = await this.marketRepo.save(market);
     return successRes(this.safe(saved));
   }
 
@@ -307,7 +307,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   }
 
   async updateMe(marketId: string, dto: UpdateMarketDto) {
-    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    const market = await this.marketRepo.findOne({ where: { id: marketId, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Not found');
 
     if (dto.name !== undefined) market.name = dto.name;
@@ -315,7 +315,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (dto.phoneNumber !== undefined) {
       const phone = dto.phoneNumber?.trim();
       if (!phone) throw new BadRequestException('Phone number cannot be empty');
-      const existsPhone = await this.repo.findOne({ where: { phoneNumber: phone, isDeleted: false } as any });
+      const existsPhone = await this.marketRepo.findOne({ where: { phoneNumber: phone } as any });
       if (existsPhone && (existsPhone as any).id !== marketId)
         throw new ConflictException('Phone number already exists');
       market.phoneNumber = phone;
@@ -324,7 +324,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     if (dto.username !== undefined) {
       const username = dto.username?.trim();
       if (username) {
-        const existsUsername = await this.repo.findOne({ where: { username, isDeleted: false } as any });
+        const existsUsername = await this.marketRepo.findOne({ where: { username } as any });
         if (existsUsername && (existsUsername as any).id !== marketId) {
           throw new ConflictException('Username already exists');
         }
@@ -343,17 +343,17 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     if (dto.language !== undefined) market.language = dto.language;
 
-    const saved = await this.repo.save(market);
+    const saved = await this.marketRepo.save(market);
     return successRes(this.safe(saved));
   }
 
   async updateFcmToken(marketId: string, token: string) {
-    await this.repo.update({ id: marketId }, { fcmToken: token });
+    await this.marketRepo.update({ id: marketId }, { fcmToken: token });
     return successRes({ updated: true });
   }
 
   async uploadPhoto(marketId: string, file: Express.Multer.File) {
-    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    const market = await this.marketRepo.findOne({ where: { id: marketId, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Market not found');
 
     // Eski rasmni o'chirish
@@ -362,19 +362,19 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     }
 
     market.photoPath = toPublicPath('market', file.filename);
-    const saved = await this.repo.save(market);
+    const saved = await this.marketRepo.save(market);
 
     return successRes(this.safe(saved));
   }
 
   async deletePhoto(marketId: string) {
-    const market = await this.repo.findOne({ where: { id: marketId, isDeleted: false } as any });
+    const market = await this.marketRepo.findOne({ where: { id: marketId, isDeleted: false } as any });
     if (!market) throw new NotFoundException('Market not found');
 
     if (market.photoPath) {
       await deleteFile(market.photoPath);
       market.photoPath = null;
-      await this.repo.save(market);
+      await this.marketRepo.save(market);
     }
 
     return successRes(this.safe(market));
@@ -401,7 +401,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
   }
 
   async SoftDelete(id: string): Promise<ISuccess<{ deleted: true }>> {
-    return this.repo.manager.transaction(async (manager) => {
+    return this.marketRepo.manager.transaction(async (manager) => {
       const now = new Date();
 
       const market = await manager.findOne(MarketEntity, {
@@ -481,7 +481,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async requestForgotOtp(dto: RequestMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const user = await this.marketRepo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (!user) throw new NotFoundException('Phone number not found');
 
     const code = String(randomInt(100000, 1000000));
@@ -539,11 +539,11 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
     const ok = await this.redis.get(verifyKey);
     if (!ok) throw new BadRequestException('Phone not verified');
 
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: false } as any });
+    const user = await this.marketRepo.findOne({ where: { phoneNumber, isDeleted: false } as any });
     if (!user) throw new NotFoundException('Market not found');
 
     user.password = await this.crypto.encrypt(dto.newPassword);
-    const saved = await this.repo.save(user);
+    const saved = await this.marketRepo.save(user);
     await this.redis.del(verifyKey);
 
     return successRes(this.safe(saved));
@@ -555,7 +555,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
   async requestRestoreOtp(dto: RequestMarketOtpDto) {
     const phoneNumber = dto.phoneNumber.trim();
-    const user = await this.repo.findOne({ where: { phoneNumber, isDeleted: true } as any });
+    const user = await this.marketRepo.findOne({ where: { phoneNumber, isDeleted: true } as any });
     if (!user) throw new NotFoundException('Deleted market with this phone number not found');
 
     const code = String(randomInt(100000, 1000000));
@@ -598,7 +598,7 @@ export class MarketService extends BaseService<CreateMarketDto, UpdateMarketDto,
 
     await this.redis.del(key);
 
-    await this.repo.manager.transaction(async (manager) => {
+    await this.marketRepo.manager.transaction(async (manager) => {
       const market = await manager.findOne(MarketEntity, {
         where: { phoneNumber, isDeleted: true } as any,
         select: ['id'],

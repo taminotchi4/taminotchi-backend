@@ -63,4 +63,7 @@ export class ElonEntity extends BaseEntity {
     @OneToOne(() => CommentEntity, { onDelete: 'CASCADE', nullable: true })
     @JoinColumn({ name: 'commentId' })
     comment: CommentEntity | null;
+
+    @Column({ type: 'boolean', default: true })
+    isVerified: boolean;
 }

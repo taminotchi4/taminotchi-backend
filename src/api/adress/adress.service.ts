@@ -24,14 +24,14 @@ export class AdressService extends BaseService<CreateAdressDto, UpdateAdressDto,
     const market = await this.marketRepo.findOne({ where: { id: marketId } as any });
     if (!market) throw new NotFoundException('Market not found');
 
-    const entity = this.repo.create({
+    const entity = this.adressRepo.create({
       name: dto.name.trim(),
       ...(dto.long !== undefined ? { long: dto.long } : {}),
       ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
       marketId,
     });
 
-    const saved = await this.repo.save(entity);
+    const saved = await this.adressRepo.save(entity);
 
     // market.adressId ni yangilaymiz
     await this.marketRepo.update(marketId, { adressId: saved.id });
@@ -40,7 +40,7 @@ export class AdressService extends BaseService<CreateAdressDto, UpdateAdressDto,
   }
 
   async updateAddress(id: string, dto: UpdateAdressDto, marketId: string): Promise<ISuccess<AdressEntity>> {
-    const address = await this.repo.findOne({ where: { id } as any });
+    const address = await this.adressRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!address) throw new NotFoundException('Address not found');
 
     if (address.marketId !== marketId) {
@@ -51,12 +51,12 @@ export class AdressService extends BaseService<CreateAdressDto, UpdateAdressDto,
     if (dto.long !== undefined) address.long = dto.long;
     if (dto.lat !== undefined) address.lat = dto.lat;
 
-    const saved = await this.repo.save(address);
+    const saved = await this.adressRepo.save(address);
     return successRes(saved);
   }
 
   async deleteAddress(id: string, marketId: string): Promise<ISuccess<AdressEntity>> {
-    const address = await this.repo.findOne({ where: { id } as any });
+    const address = await this.adressRepo.findOne({ where: { id, isDeleted: false } as any });
     if (!address) throw new NotFoundException('Address not found');
 
     if (address.marketId !== marketId) {
@@ -66,7 +66,7 @@ export class AdressService extends BaseService<CreateAdressDto, UpdateAdressDto,
     // market.adressId ni tozalaymiz
     await this.marketRepo.update(marketId, { adressId: null });
 
-    const deleted = await this.repo.remove(address);
+    const deleted = await this.adressRepo.remove(address);
     return successRes(deleted);
   }
 }
